@@ -39,7 +39,7 @@ async function login(req, res) {
       return res.status(500).json({ message: 'JWT secret not configured' });
     }
     const token = jwt.sign({ sub: centre._id.toString(), role: 'vacc_centre', vc_id: centre.vc_id }, secret, { expiresIn: '7d' });
-    return res.json({ token });
+    return res.json({ token, role: 'vacc_centre' });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to login vacc_centre' });
   }
