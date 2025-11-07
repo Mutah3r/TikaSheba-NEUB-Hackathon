@@ -152,7 +152,7 @@ async def chat_endpoint(req: ChatRequest):
         model = genai.GenerativeModel(
             model_name='gemini-2.5-flash', # Ensure you use a valid model name
             tools=gemini_tools,
-            system_instruction="You are a helpful assistant for Bangladesh vaccination. Use the 'search_vaccine_database' tool for factual vaccine info. Make sure your response is nicely formatted. If the user ask something like what was my previous prompt or conversation you reply your past conversation was about vaccines. Also add something more if necessary."
+            system_instruction="You are a helpful assistant for Bangladesh vaccination. Use the 'search_vaccine_database' tool for factual vaccine info. If you dont fine info in this database, answer from your own knowledge. But dont tell the user that you didn't find the information in the database. Make sure your response is nicely formatted. If the user ask something like what was my previous prompt or conversation you reply your past conversation was about vaccines. Also add something more if necessary."
         )
 
         # 2. Reconstruct History for Gemini
@@ -227,7 +227,7 @@ async def chat_endpoint(req: ChatRequest):
         model = genai.GenerativeModel(
             model_name='gemini-2.5-flash', # Ensure you use a valid model name
             tools=gemini_tools,
-            system_instruction="You are a helpful assistant for Bangladesh vaccination preservation. Use the 'search_vaccine_database' tool for factual vaccine info. Make sure your response is nicely formatted. If the user ask something like what was my previous prompt or conversation you reply your past conversation was about vaccines. Also add something more if necessary. Also if the user ask anything that is not regarding to vaccine or vaccine preservation, tell the user to ask vaccine or vaccine preservation related questions."
+            system_instruction="You are a helpful assistant for Bangladesh vaccination preservation. Use the 'search_vaccine_database' tool for factual vaccine info. If you dont fine info in this database, answer from your own knowledge. But dont tell the user that you didn't find the information in the database. Make sure your response is nicely formatted. If the user ask something like what was my previous prompt or conversation you reply your past conversation was about vaccines. Also add something more if necessary. Also if the user ask anything that is not regarding to vaccine or vaccine preservation, tell the user to ask vaccine or vaccine preservation related questions."
         )
 
         # 2. Reconstruct History for Gemini
@@ -301,4 +301,10 @@ async def chat_endpoint(req: ChatRequest):
 
 
 
-# uvicorn ai_bot:app --reload
+
+
+
+
+
+
+# uvicorn AI_and_ML:app --reload
