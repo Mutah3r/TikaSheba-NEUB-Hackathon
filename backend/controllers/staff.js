@@ -179,6 +179,11 @@ async function getDailyUsageByCentreVaccine(req, res) {
     }
     // Collect staff docs for this centre
     const staffDocs = await Staff.find({ centre_id: cv.centre_id }).lean();
+    // Build last 100 days window (inclusive, ending today)
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+    const start = new Date(end);
+    start.setDate(start.getDate() - 99);
     const map = new Map(); // date (YYYY-MM-DD) -> { used, wasted }
     for (const doc of staffDocs) {
       const list = Array.isArray(doc.vaccine_list) ? doc.vaccine_list : [];
@@ -187,6 +192,8 @@ async function getDailyUsageByCentreVaccine(req, res) {
       const logs = Array.isArray(item.log) ? item.log : [];
       for (const l of logs) {
         const d = new Date(l.date);
+        d.setHours(0, 0, 0, 0);
+        if (d < start || d > end) continue; // only aggregate within window
         const key = d.toISOString().slice(0, 10);
         const used = Number(l.dose_used) || 0;
         const wasted = Number(l.dose_wasted) || 0;
@@ -196,9 +203,15 @@ async function getDailyUsageByCentreVaccine(req, res) {
         map.set(key, prev);
       }
     }
-    const daily = Array.from(map.entries())
-      .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
-      .map(([date, sums]) => ({ date, total_dose_used: sums.used, total_dose_wasted: sums.wasted }));
+    const daily = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const key = cursor.toISOString().slice(0, 10);
+      const sums = map.get(key) || { used: 0, wasted: 0 };
+      daily.push({ date: key, total_dose_used: sums.used, total_dose_wasted: sums.wasted });
+      cursor.setDate(cursor.getDate() + 1);
+      cursor.setHours(0, 0, 0, 0);
+    }
     return res.json({
       centre_vaccine_id,
       centre_id: cv.centre_id,

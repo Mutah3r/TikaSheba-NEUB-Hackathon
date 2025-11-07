@@ -124,7 +124,7 @@ router.get('/schedule/centre/:centre_id/next30', authenticateToken, authorizeRol
  * @swagger
  * /api/capacity/available/centre/{centre_id}/next30:
  *   get:
- *     summary: Citizen: get dates in next 30 days where scheduled count is less than capacity
+ *     summary: Citizen available dates where scheduled count is below capacity (next 30 days)
  *     tags: [Capacity]
  *     security:
  *       - bearerAuth: []
