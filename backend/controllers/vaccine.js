@@ -156,7 +156,38 @@ async function getLogsByCitizen(req, res) {
       query.centre_id = req.user.vc_id;
     }
     const logs = await VaccineLog.find(query).sort({ date: -1 });
-    return res.json(logs);
+
+    // Enrich logs with staff_name by looking up centre's staffs list
+    // Collect unique centre_ids from logs to fetch corresponding centre documents once
+    const centreIds = [...new Set(logs.map((l) => l.centre_id))];
+    let centres = [];
+    if (centreIds.length > 0) {
+      centres = await VaccCentre.find({ vc_id: { $in: centreIds } });
+    }
+    // Build map: centre_id -> (staff_id -> staff_name)
+    const centreStaffMap = new Map();
+    for (const c of centres) {
+      const staffMap = new Map();
+      if (Array.isArray(c.staffs)) {
+        for (const s of c.staffs) {
+          if (s && typeof s.id === 'string') {
+            staffMap.set(s.id, s.name);
+          }
+        }
+      }
+      centreStaffMap.set(c.vc_id, staffMap);
+    }
+
+    const enriched = logs.map((l) => {
+      const obj = l.toObject();
+      const staffMap = centreStaffMap.get(l.centre_id);
+      obj.staff_name = staffMap ? (staffMap.get(l.staff_id) || null) : null;
+      // Ensure staff_id is present (already stored in VaccineLog)
+      obj.staff_id = obj.staff_id || l.staff_id;
+      return obj;
+    });
+
+    return res.json(enriched);
   } catch (err) {
     return res.status(500).json({ message: 'Failed to fetch logs by citizen' });
   }
