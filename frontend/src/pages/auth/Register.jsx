@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import OTPModal from "../../components/OTPModal";
-import { FiUser, FiFileText, FiPhone } from "react-icons/fi";
+import Notification from "../../components/Notification";
+import { FiUser, FiFileText, FiPhone, FiHash, FiCalendar, FiUsers } from "react-icons/fi";
+import { registerCitizen, verifyCitizenOtp } from "../../services/citizenService";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -10,7 +12,11 @@ const Register = () => {
   const [idType, setIdType] = useState("NID");
   const [idNumber, setIdNumber] = useState("");
   const [phone, setPhone] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [gender, setGender] = useState("Male");
+  const [dob, setDob] = useState("");
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
@@ -33,31 +39,68 @@ const Register = () => {
     // Mock resend
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setError("");
     if (name.trim().length < 2) return setError("Please enter your full name.");
     if (!idNumber.trim()) return setError("Enter your NID/Birth Certificate number.");
     if (!/^\+?\d{10,14}$/.test(phone)) return setError("Enter a valid phone number.");
-    // Mock submit: open OTP
-    setTimeout(() => startOtpFlow(), 300);
+    if (!registrationNumber.trim()) return setError("Enter your registration number.");
+    if (!dob) return setError("Select your date of birth.");
+
+    setSending(true);
+    try {
+      const payload = {
+        name,
+        idType,
+        idNumber,
+        phone,
+        registrationNumber,
+        gender,
+        dob,
+      };
+      await registerCitizen(payload);
+      startOtpFlow();
+      setToast({ show: true, type: "success", message: `OTP sent to ${phone}. Enter the code to continue.` });
+      setTimeout(() => setToast({ show: false, message: "" }), 4500);
+    } catch (err) {
+      setError(err?.message || "Could not send OTP. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
-  const handleOtpSubmit = (code) => {
+  const handleOtpSubmit = async (code) => {
     setSubmittingOtp(true);
-    setTimeout(() => {
+    try {
+      const res = await verifyCitizenOtp({ phone_number: phone, otp: code });
+      const token = res?.token;
+      const role = res?.role;
+      if (!token) throw new Error("Missing token in response");
+      localStorage.setItem("auth_token", token);
+      if (role) localStorage.setItem("role", role);
+      setOtpOpen(false);
+      setToast({ show: true, type: "success", message: "Phone verified. Welcome!" });
+      setTimeout(() => setToast({ show: false, message: "" }), 3500);
+      navigate("/dashboard/citizen");
+    } catch (err) {
+      setError(err?.message || "Invalid OTP. Try again.");
+      setToast({ show: true, type: "notice", message: err?.message || "Could not verify phone." });
+      setTimeout(() => setToast({ show: false, message: "" }), 3500);
+    } finally {
       setSubmittingOtp(false);
-      if (code === "1234") {
-        setOtpOpen(false);
-        alert("Registration successful! Please login.");
-        navigate("/auth/login");
-      } else {
-        setError("Invalid OTP. Try again.");
-      }
-    }, 800);
+    }
   };
+
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
   return (
     <div className="space-y-6">
+      <Notification
+        show={toast.show}
+        type={toast.type || "success"}
+        message={toast.message}
+        onClose={() => setToast((t) => ({ ...t, show: false }))}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Citizen Registration</h2>
@@ -75,6 +118,20 @@ const Register = () => {
               placeholder="e.g. John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-[#EAB308]/30 focus:border-[#EAB308] outline-none pl-9 pr-3 py-2"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <label className="block text-sm font-medium">Registration Number</label>
+          <div className="relative">
+            <FiHash className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0c2b40]/50" />
+            <input
+              type="text"
+              placeholder="e.g. REG-2025-0001"
+              value={registrationNumber}
+              onChange={(e) => setRegistrationNumber(e.target.value)}
               className="w-full rounded-xl border border-[#EAB308]/30 focus:border-[#EAB308] outline-none pl-9 pr-3 py-2"
             />
           </div>
@@ -121,6 +178,45 @@ const Register = () => {
         </div>
 
         <div className="grid gap-2">
+          <label className="block text-sm font-medium">Gender</label>
+          <div className="flex items-center gap-4">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="gender"
+                value="Male"
+                checked={gender === "Male"}
+                onChange={(e) => setGender(e.target.value)}
+              />
+              <FiUsers /> Male
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="gender"
+                value="Female"
+                checked={gender === "Female"}
+                onChange={(e) => setGender(e.target.value)}
+              />
+              <FiUsers /> Female
+            </label>
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <label className="block text-sm font-medium">Date of Birth</label>
+          <div className="relative">
+            <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0c2b40]/50" />
+            <input
+              type="date"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+              className="w-full rounded-xl border border-[#EAB308]/30 focus:border-[#EAB308] outline-none pl-9 pr-3 py-2"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-2">
           <label className="block text-sm font-medium">Phone Number</label>
           <div className="relative">
             <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0c2b40]/50" />
@@ -139,9 +235,10 @@ const Register = () => {
         <div className="flex items-center justify-end">
           <button
             onClick={handleRegister}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F04E36] text-white px-4 py-2 font-medium hover:bg-[#e3452f]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F04E36] text-white px-4 py-2 font-medium hover:bg-[#e3452f] disabled:opacity-50"
+            disabled={sending}
           >
-            Register
+            {sending ? "Sending OTP..." : "Register"}
           </button>
         </div>
 
@@ -153,7 +250,26 @@ const Register = () => {
           title="Verify Phone with OTP"
           subtitle={phone ? `Sent to ${phone}` : undefined}
           resendSeconds={resendSeconds}
-          onResend={handleResend}
+          onResend={async () => {
+            handleResend();
+            try {
+              await registerCitizen({
+                name,
+                idType,
+                idNumber,
+                phone,
+                registrationNumber,
+                gender,
+                dob,
+              });
+              setToast({ show: true, type: "success", message: `OTP resent to ${phone}.` });
+              setTimeout(() => setToast({ show: false, message: "" }), 3500);
+            } catch (err) {
+              setError(err?.message || "Could not resend OTP.");
+              setToast({ show: true, type: "notice", message: err?.message || "Could not resend OTP." });
+              setTimeout(() => setToast({ show: false, message: "" }), 3500);
+            }
+          }}
         />
       </motion.div>
     </div>
