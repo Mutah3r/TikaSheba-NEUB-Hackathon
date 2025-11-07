@@ -47,7 +47,7 @@ const citizenSchema = new mongoose.Schema({
             required: true,
           },
           time_stamp: {
-            type: time_stamp,
+            type: Date,
             require: true
           }
     }
