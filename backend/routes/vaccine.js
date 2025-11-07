@@ -97,6 +97,30 @@ router.put('/:id', authenticateToken, authorizeRoles('authority'), controller.up
 
 /**
  * @swagger
+ * /api/vaccine/{id}:
+ *   delete:
+ *     summary: Delete vaccine (authority only)
+ *     tags: [Vaccine]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vaccine deleted
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Not found
+ */
+router.delete('/:id', authenticateToken, authorizeRoles('authority'), controller.deleteVaccine);
+
+/**
+ * @swagger
  * /api/vaccine/log:
  *   post:
  *     summary: Create vaccine log (staff only)

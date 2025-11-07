@@ -44,6 +44,41 @@ router.post('/', authenticateToken, authorizeRoles('authority'), controller.addC
 
 /**
  * @swagger
+ * /api/centre_vaccine/bulk:
+ *   post:
+ *     summary: Bulk add centre vaccines for a centre (authority only)
+ *     tags: [Centre Vaccine]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [centre_id, items]
+ *             properties:
+ *               centre_id: { type: string }
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [vaccine_id, vaccine_name]
+ *                   properties:
+ *                     vaccine_id: { type: string }
+ *                     vaccine_name: { type: string }
+ *     responses:
+ *       201:
+ *         description: Bulk centre vaccines added
+ *       400:
+ *         description: Bad request
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/bulk', authenticateToken, authorizeRoles('authority'), controller.addCentreVaccinesBulk);
+
+/**
+ * @swagger
  * /api/centre_vaccine/{id}:
  *   delete:
  *     summary: Delete centre vaccine by id (authority only)
@@ -257,6 +292,28 @@ router.put('/:id/request', authenticateToken, authorizeRoles('vacc_centre'), con
  *         description: Forbidden
  */
 router.get('/assigned', authenticateToken, authorizeRoles('vacc_centre'), controller.getAssignedForCentre);
+
+/**
+ * @swagger
+ * /api/centre_vaccine/assigned/{centre_id}:
+ *   get:
+ *     summary: Get all vaccines assigned to a centre (authority only)
+ *     tags: [Centre Vaccine]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: centre_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of assigned vaccines for the centre
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/assigned/:centre_id', authenticateToken, authorizeRoles('authority'), controller.getAssignedForCentreByAuthority);
 
 /**
  * @swagger

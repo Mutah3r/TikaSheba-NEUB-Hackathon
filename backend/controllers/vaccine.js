@@ -56,6 +56,26 @@ async function listVaccines(req, res) {
 
 module.exports.listVaccines = listVaccines;
 
+// Delete vaccine by id (authority only)
+async function deleteVaccine(req, res) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'id is required' });
+    }
+    const doc = await Vaccine.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: 'Vaccine not found' });
+    }
+    await Vaccine.findByIdAndDelete(id);
+    return res.json({ message: 'Vaccine deleted', id });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to delete vaccine' });
+  }
+}
+
+module.exports.deleteVaccine = deleteVaccine;
+
 async function createVaccineLog(req, res) {
   try {
     if (req.user?.role !== 'staff') {

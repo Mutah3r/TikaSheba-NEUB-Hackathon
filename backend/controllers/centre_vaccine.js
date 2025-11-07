@@ -116,6 +116,61 @@ async function updateStatus(req, res) {
   }
 }
 
+// Authority: bulk add centre vaccines for a given centre_id
+// Body: { centre_id: string, items: Array<{ vaccine_id: string, vaccine_name: string }> }
+async function addCentreVaccinesBulk(req, res) {
+  try {
+    if (req.user.role !== 'authority') {
+      return res.status(403).json({ message: 'Forbidden: authority only' });
+    }
+    const { centre_id, items } = req.body || {};
+    if (!centre_id || !Array.isArray(items)) {
+      return res.status(400).json({ message: 'centre_id and items[] are required' });
+    }
+    const cleaned = items
+      .filter(i => i && typeof i === 'object')
+      .map(i => ({ vaccine_id: String(i.vaccine_id || ''), vaccine_name: String(i.vaccine_name || '') }))
+      .filter(i => i.vaccine_id && i.vaccine_name);
+    if (!cleaned.length) {
+      return res.status(400).json({ message: 'items must contain vaccine_id and vaccine_name' });
+    }
+    const dedupIds = Array.from(new Set(cleaned.map(i => i.vaccine_id)));
+    const existing = await CentreVaccine.find({ centre_id, vaccine_id: { $in: dedupIds } })
+      .select('vaccine_id')
+      .lean();
+    const existingSet = new Set((existing || []).map(e => e.vaccine_id));
+    const toCreate = cleaned.filter(i => !existingSet.has(i.vaccine_id)).map(i => ({
+      centre_id,
+      vaccine_id: i.vaccine_id,
+      vaccine_name: i.vaccine_name,
+      current_stock: 0,
+      requested_stock_amount: 0,
+      created_at: new Date(),
+    }));
+    if (!toCreate.length) {
+      return res.status(200).json({
+        message: 'No new entries to insert; all already exist',
+        centre_id,
+        created_count: 0,
+        skipped_count: cleaned.length,
+        created_ids: [],
+      });
+    }
+    const inserted = await CentreVaccine.insertMany(toCreate, { ordered: false });
+    const created_ids = (inserted || []).map(d => d._id.toString());
+    return res.status(201).json({
+      message: 'Bulk centre vaccines added',
+      centre_id,
+      created_count: created_ids.length,
+      skipped_count: cleaned.length - created_ids.length,
+      created_ids,
+    });
+  } catch (err) {
+    console.error('addCentreVaccinesBulk error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 // Vaccine centre: update stock (add or decrease)
 async function updateStock(req, res) {
   try {
@@ -257,6 +312,34 @@ async function getAssignedForCentre(req, res) {
   }
 }
 
+// Authority: get all vaccines assigned to a specific centre (by centre_id)
+async function getAssignedForCentreByAuthority(req, res) {
+  try {
+    if (req.user.role !== 'authority') {
+      return res.status(403).json({ message: 'Forbidden: authority only' });
+    }
+    const { centre_id } = req.params;
+    if (!centre_id) {
+      return res.status(400).json({ message: 'centre_id is required' });
+    }
+    const assigned = await CentreVaccine.find({ centre_id })
+      .select('vaccine_name')
+      .lean();
+    const names = Array.from(new Set((assigned || []).map((d) => d.vaccine_name).filter(Boolean)));
+    if (!names.length) {
+      return res.status(200).json([]);
+    }
+    const vaccines = await Vaccine.find({ name: { $in: names } })
+      .select('name description _id')
+      .lean();
+    const result = (vaccines || []).map((v) => ({ id: v._id.toString(), name: v.name, description: v.description }));
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('getAssignedForCentreByAuthority error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 module.exports = {
   addCentreVaccine,
   deleteCentreVaccine,
@@ -267,6 +350,8 @@ module.exports = {
   getByRequestedStatus,
   sendRequest,
   getAssignedForCentre,
+  getAssignedForCentreByAuthority,
+  addCentreVaccinesBulk,
 };
 
 // Public: Get all centres that currently have stock for a given vaccine_id

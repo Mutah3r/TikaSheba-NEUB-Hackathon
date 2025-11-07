@@ -235,9 +235,9 @@ async function getStaffVaccineUsageSummary(req, res) {
     if (!req.user || !['vacc_centre', 'authority'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
-    if (req.user.role === 'vacc_centre' && req.user.vc_id !== centre_id) {
-      return res.status(403).json({ message: 'Forbidden: different centre' });
-    }
+    // if (req.user.role === 'vacc_centre' && req.user.vc_id !== centre_id) {
+    //   return res.status(403).json({ message: 'Forbidden: different centre' });
+    // }
 
     const staffDocs = await Staff.find({ centre_id }).lean();
     const staff = staffDocs.map((doc) => {
