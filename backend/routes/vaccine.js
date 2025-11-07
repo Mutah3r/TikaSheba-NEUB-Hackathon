@@ -58,7 +58,7 @@ router.post('/', authenticateToken, authorizeRoles('authority'), controller.addV
  *       403:
  *         description: Forbidden
  */
-router.get('/', authenticateToken, authorizeRoles('authority'), controller.listVaccines);
+router.get('/', authenticateToken, authorizeRoles('authority','citizen'), controller.listVaccines);
 
 /**
  * @swagger
