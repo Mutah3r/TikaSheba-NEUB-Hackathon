@@ -71,7 +71,7 @@ TikaSheba targets the following critical inefficiencies in traditional vaccinati
     
 -   ![React](https://img.icons8.com/color/48/000000/react-native.png) **React.js**: For building modular, component-based web dashboards.
     
--   ![Vite](https://vitejs.dev/logo.svg) **Vite**: A fast build tool for optimized frontend bundling.
+-   ![Vite] **Vite**: A fast build tool for optimized frontend bundling.
     
 -   ![React Router](https://i.ibb.co/19d5sDG/react-router-svg.png) **React Router**: For managing role-based routes and navigation.
     
@@ -90,7 +90,7 @@ TikaSheba targets the following critical inefficiencies in traditional vaccinati
     
 -   ![Express.js](https://cdn.icon-icons.com/icons2/2699/PNG/48/expressjs_logo_icon_169185.png) **Express.js**: To design RESTful APIs and manage service routes.
     
--   ![Swagger](https://static1.smartbear.co/swagger/media/assets/images/swagger_logo.svg) **Swagger**: For API documentation and testing endpoints.
+-   ![Swagger] **Swagger**: For API documentation and testing endpoints.
     
 -   ![dotenv](https://i.ibb.co/myKkQ4t/image-8.png) **dotenv**: To securely load environment variables.
     
