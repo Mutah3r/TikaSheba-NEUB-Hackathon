@@ -51,7 +51,11 @@ const citizenSchema = new mongoose.Schema({
             require: true
           }
     }
-  ]
+  ],
+  vaccine_certificate_qr : {
+    type: String,
+  }
+  
 });
 
 const Citizen = mongoose.model('Citizen', citizenSchema);
@@ -62,3 +66,4 @@ module.exports = Citizen;
 
 
 // add vaccine taken, post api (vaccine_taken : [vaccine_id, name, time_stamp])
+// get vaccine taken, (format it to vaccine_name, dose_count (vaccine_taken for this vaccine_id), last_date)

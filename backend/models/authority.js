@@ -18,3 +18,9 @@ const authoritySchema = new mongoose.Schema({
 
 const Authority = mongoose.model('Authority', authoritySchema);
 module.exports = Authority;
+
+
+
+// create authoritiy
+
+// update authority
