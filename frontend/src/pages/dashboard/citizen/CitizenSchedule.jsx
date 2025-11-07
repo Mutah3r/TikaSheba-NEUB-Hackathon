@@ -393,7 +393,7 @@ const CitizenSchedule = () => {
                       }}
                       className="inline-flex items-center gap-2 rounded-lg bg-[#F04E36] text-white px-3 py-2 text-sm font-medium hover:bg-[#e3452f]"
                     >
-                      Send Request
+                      Book Appointment
                     </button>
                   </div>
                 </motion.div>

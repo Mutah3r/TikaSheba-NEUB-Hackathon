@@ -1,16 +1,24 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useMemo, useState } from "react";
 import {
-  ResponsiveContainer,
-  BarChart,
+  FiDroplet,
+  FiHash,
+  FiInfo,
+  FiMapPin,
+  FiTrash2,
+  FiTrendingUp,
+  FiUsers,
+} from "react-icons/fi";
+import {
   Bar,
+  BarChart,
+  CartesianGrid,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  LabelList,
 } from "recharts";
-import { FiUsers, FiTrendingUp, FiClipboard, FiMapPin, FiHash, FiInfo, FiDroplet, FiTrash2 } from "react-icons/fi";
-import { useMemo, useState } from "react";
 
 const CentreDashboard = () => {
   const centre = useMemo(
@@ -67,7 +75,10 @@ const CentreDashboard = () => {
   const [selected, setSelected] = useState(null);
 
   const maxWeekly = Math.max(...vaccines.map((v) => v.weeklyCount));
-  const chartData = useMemo(() => vaccines.map((v) => ({ name: v.name, weeklyCount: v.weeklyCount })), [vaccines]);
+  const chartData = useMemo(
+    () => vaccines.map((v) => ({ name: v.name, weeklyCount: v.weeklyCount })),
+    [vaccines]
+  );
   const totalServed = vaccines.reduce((acc, v) => acc + v.weeklyCount, 0);
   const totalDosage = totalServed; // placeholder: doses administered last week
   const weeklyWaste = Math.round(totalServed * 0.04); // placeholder estimate (4%)
@@ -87,7 +98,9 @@ const CentreDashboard = () => {
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#081F2E]/10 text-[#081F2E] mb-3">
             <FiUsers />
           </div>
-          <p className="text-sm text-[#0c2b40]/70">Total People Served (Last Week)</p>
+          <p className="text-sm text-[#0c2b40]/70">
+            Total People Served (Last Week)
+          </p>
           <p className="text-lg font-semibold">{totalServed}</p>
         </div>
         {/* Vaccine Dosages (Last Week) */}
@@ -95,7 +108,9 @@ const CentreDashboard = () => {
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAB308]/10 text-[#EAB308] mb-3">
             <FiDroplet />
           </div>
-          <p className="text-sm text-[#0c2b40]/70">Vaccine Dosages (Last Week)</p>
+          <p className="text-sm text-[#0c2b40]/70">
+            Vaccine Dosages (Last Week)
+          </p>
           <p className="text-lg font-semibold">{totalDosage}</p>
         </div>
         {/* Wasted Vaccines (Last Week) */}
@@ -103,7 +118,9 @@ const CentreDashboard = () => {
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F04E36]/10 text-[#F04E36] mb-3">
             <FiTrash2 />
           </div>
-          <p className="text-sm text-[#0c2b40]/70">Wasted Vaccines (Last Week)</p>
+          <p className="text-sm text-[#0c2b40]/70">
+            Wasted Vaccines (Last Week)
+          </p>
           <p className="text-lg font-semibold">{weeklyWaste}</p>
         </div>
       </motion.div>
@@ -124,7 +141,9 @@ const CentreDashboard = () => {
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAB308]/15 text-[#EAB308] ring-1 ring-[#EAB308]/30">
                   <FiInfo />
                 </div>
-                <h2 className="text-xl font-semibold text-[#081F2E]">Offered Vaccines</h2>
+                <h2 className="text-xl font-semibold text-[#081F2E]">
+                  Offered Vaccines
+                </h2>
               </div>
             </div>
             <div className="p-5">
@@ -132,12 +151,19 @@ const CentreDashboard = () => {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gradient-to-r from-[#FFF5E6] via-[#fff] to-[#FFEFEA]">
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-[#0c2b40]">Vaccine Name</th>
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-[#0c2b40]">Action</th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-[#0c2b40]">
+                        Vaccine Name
+                      </th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-[#0c2b40]">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <AnimatePresence>
-                    <motion.tbody initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <motion.tbody
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
                       {vaccines.map((v, idx) => (
                         <motion.tr
                           key={v.id}
@@ -146,7 +172,9 @@ const CentreDashboard = () => {
                           transition={{ delay: idx * 0.05 }}
                           className="border-t border-[#081F2E]/10 hover:bg-[#081F2E]/3"
                         >
-                          <td className="px-4 py-3 text-[#081F2E] font-medium">{v.name}</td>
+                          <td className="px-4 py-3 text-[#081F2E] font-medium">
+                            {v.name}
+                          </td>
                           <td className="px-4 py-3">
                             <button
                               onClick={() => setSelected(v)}
@@ -167,18 +195,55 @@ const CentreDashboard = () => {
           {/* Weekly Serve Bar Chart (Recharts) */}
           <div className="rounded-2xl bg-white/70 backdrop-blur-md shadow-sm ring-1 ring-[#081F2E]/10 p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold text-[#081F2E]">Weekly Serve Count</h3>
+              <h3 className="text-lg font-semibold text-[#081F2E]">
+                Weekly Serve Count
+              </h3>
               <span className="text-xs text-[#0c2b40]/70">Last 7 days</span>
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 12, right: 12, left: 12, bottom: 12 }}>
-                  <CartesianGrid stroke="#081F2E" strokeOpacity={0.1} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill: "#081F2E", fontSize: 12 }} axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }} tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }} />
-                  <YAxis tick={{ fill: "#081F2E", fontSize: 12 }} axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }} tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }} />
-                  <Tooltip cursor={{ fill: "#081F2E", fillOpacity: 0.04 }} contentStyle={{ backgroundColor: "#fff", border: "1px solid rgba(8,31,46,0.15)", borderRadius: 12 }} labelStyle={{ color: "#081F2E" }} itemStyle={{ color: "#081F2E" }} />
-                  <Bar dataKey="weeklyCount" fill="#2FC94E" stroke="#2FC94E" isAnimationActive animationDuration={700}>
-                    <LabelList dataKey="weeklyCount" position="top" style={{ fill: "#081F2E", fontSize: 11 }} />
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 12, right: 12, left: 12, bottom: 12 }}
+                >
+                  <CartesianGrid
+                    stroke="#081F2E"
+                    strokeOpacity={0.1}
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: "#081F2E", fontSize: 12 }}
+                    axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                    tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                  />
+                  <YAxis
+                    tick={{ fill: "#081F2E", fontSize: 12 }}
+                    axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                    tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "#081F2E", fillOpacity: 0.04 }}
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid rgba(8,31,46,0.15)",
+                      borderRadius: 12,
+                    }}
+                    labelStyle={{ color: "#081F2E" }}
+                    itemStyle={{ color: "#081F2E" }}
+                  />
+                  <Bar
+                    dataKey="weeklyCount"
+                    fill="#2FC94E"
+                    stroke="#2FC94E"
+                    isAnimationActive
+                    animationDuration={700}
+                  >
+                    <LabelList
+                      dataKey="weeklyCount"
+                      position="top"
+                      style={{ fill: "#081F2E", fontSize: 11 }}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -199,33 +264,45 @@ const CentreDashboard = () => {
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#081F2E]/10 text-[#081F2E] ring-1 ring-[#081F2E]/20">
                   <FiInfo />
                 </div>
-                <h3 className="text-lg font-semibold text-[#081F2E]">Centre Details</h3>
+                <h3 className="text-lg font-semibold text-[#081F2E]">
+                  Centre Details
+                </h3>
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2">
                   <FiUsers className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Name:</span>
-                  <span className="font-semibold text-[#081F2E]">{centre.name}</span>
+                  <span className="font-semibold text-[#081F2E]">
+                    {centre.name}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiMapPin className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Location:</span>
-                  <span className="font-semibold text-[#081F2E]">{centre.location}</span>
+                  <span className="font-semibold text-[#081F2E]">
+                    {centre.location}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiHash className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">ID:</span>
-                  <span className="font-semibold text-[#081F2E]">{centre.id}</span>
+                  <span className="font-semibold text-[#081F2E]">
+                    {centre.id}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiUsers className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Total Staff:</span>
-                  <span className="font-semibold text-[#081F2E]">{centre.totalStaff}</span>
+                  <span className="font-semibold text-[#081F2E]">
+                    {centre.totalStaff}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiTrendingUp className="text-[#081F2E]/70" />
-                  <span className="text-[#0c2b40]/80">Daily People Served:</span>
-                  <span className="font-semibold text-[#081F2E]">{dailyServed}</span>
+                  <span className="text-[#0c2b40]/80">Maximum Capacity:</span>
+                  <span className="font-semibold text-[#081F2E]">
+                    {dailyServed}
+                  </span>
                 </div>
               </div>
             </div>
@@ -252,10 +329,16 @@ const CentreDashboard = () => {
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg rounded-2xl bg-white ring-1 ring-[#081F2E]/10 shadow-xl"
             >
               <div className="overflow-hidden rounded-t-2xl">
-                <img src={selected.img} alt={selected.name} className="h-40 w-full object-cover" />
+                <img
+                  src={selected.img}
+                  alt={selected.name}
+                  className="h-40 w-full object-cover"
+                />
               </div>
               <div className="p-5 space-y-3">
-                <h4 className="text-lg font-semibold text-[#081F2E]">{selected.name}</h4>
+                <h4 className="text-lg font-semibold text-[#081F2E]">
+                  {selected.name}
+                </h4>
                 <p className="text-sm text-[#0c2b40]/80">{selected.desc}</p>
                 <div className="flex justify-end">
                   <button
