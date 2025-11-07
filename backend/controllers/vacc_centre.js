@@ -55,18 +55,30 @@ async function addStaff(req, res) {
     if (!id || !name || !password) {
       return res.status(400).json({ message: 'id, name, password are required' });
     }
+    console.log("came 1")
     const centre = await VaccCentre.findById(centreId);
     if (!centre) {
       return res.status(404).json({ message: 'vacc_centre not found' });
     }
-    const exists = centre.staffs.find((s) => s.id === id);
+    console.log(centre);
+    const staffList = Array.isArray(centre.staffs) ? centre.staffs : [];
+    const exists = staffList.some((s) => String(s.id) === String(id));
     if (exists) {
-      return res.status(409).json({ message: 'Staff id already exists in this centre' });
+      console.error('Failed to add staff: staff id already exists', { vc_id: centre.vc_id, id });
+      return res.status(409).json({ message: 'Failed to add staff: staff id already exists in this centre' });
     }
+    console.log("all ok");
     const hashed = await bcrypt.hash(password, 10);
-    centre.staffs.push({ id, name, password: hashed });
-    await centre.save();
-    return res.status(201).json({ message: 'Staff added' });
+    try {
+      centre.staffs = staffList;
+      centre.staffs.push({ id, name, password: hashed });
+      await centre.save();
+      console.log('Staff added', { vc_id: centre.vc_id, id });
+      return res.status(201).json({ message: 'Staff added' });
+    } catch (saveErr) {
+      console.error('Failed to add staff: save error', saveErr);
+      return res.status(500).json({ message: 'Failed to add staff' });
+    }
   } catch (err) {
     return res.status(500).json({ message: 'Failed to add staff' });
   }

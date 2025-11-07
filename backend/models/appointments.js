@@ -50,7 +50,7 @@ module.exports = Appointment;
 // citizen:
 // create appointment
 // get all vaccine appointment by citizen id 
-// get all vaccine appointment by citizen id and status
+// get all vaccine appointment by citizen id and status- separate api
 // update status (only to cancelled)
 
 
