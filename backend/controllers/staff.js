@@ -161,3 +161,53 @@ module.exports.assignVaccines = assignVaccines;
 module.exports.getMyVaccineList = getMyVaccineList;
 module.exports.createLog = createLog;
 module.exports.getEfficiency = getEfficiency;
+
+// Centre or Authority: aggregate daily dose used/wasted for a centre_vaccine_id across all staff
+async function getDailyUsageByCentreVaccine(req, res) {
+  try {
+    const { centre_vaccine_id } = req.params;
+    if (!centre_vaccine_id) {
+      return res.status(400).json({ message: 'centre_vaccine_id is required' });
+    }
+    const cv = await CentreVaccine.findById(centre_vaccine_id).lean();
+    if (!cv) {
+      return res.status(404).json({ message: 'centre_vaccine_id not found' });
+    }
+    // If centre, enforce same centre
+    if (req.user?.role === 'vacc_centre' && req.user?.vc_id !== cv.centre_id) {
+      return res.status(403).json({ message: 'Forbidden: different centre' });
+    }
+    // Collect staff docs for this centre
+    const staffDocs = await Staff.find({ centre_id: cv.centre_id }).lean();
+    const map = new Map(); // date (YYYY-MM-DD) -> { used, wasted }
+    for (const doc of staffDocs) {
+      const list = Array.isArray(doc.vaccine_list) ? doc.vaccine_list : [];
+      const item = list.find(v => v.centre_vaccine_id === centre_vaccine_id);
+      if (!item) continue;
+      const logs = Array.isArray(item.log) ? item.log : [];
+      for (const l of logs) {
+        const d = new Date(l.date);
+        const key = d.toISOString().slice(0, 10);
+        const used = Number(l.dose_used) || 0;
+        const wasted = Number(l.dose_wasted) || 0;
+        const prev = map.get(key) || { used: 0, wasted: 0 };
+        prev.used += used;
+        prev.wasted += wasted;
+        map.set(key, prev);
+      }
+    }
+    const daily = Array.from(map.entries())
+      .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+      .map(([date, sums]) => ({ date, total_dose_used: sums.used, total_dose_wasted: sums.wasted }));
+    return res.json({
+      centre_vaccine_id,
+      centre_id: cv.centre_id,
+      vaccine_name: cv.vaccine_name,
+      daily,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to aggregate daily usage' });
+  }
+}
+
+module.exports.getDailyUsageByCentreVaccine = getDailyUsageByCentreVaccine;

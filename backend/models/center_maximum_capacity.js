@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 //name, email, password
 const capacity = new mongoose.Schema({
-  center_id : {
+  centre_id : {
         type: String,
         required: true,
   },
