@@ -1,55 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiCalendar, FiChevronDown, FiMapPin, FiSearch } from "react-icons/fi";
 import GoogleMap from "../../../components/GoogleMap";
 import MapModal from "../../../components/MapModal";
 import Notification from "../../../components/Notification";
 import ScheduleRequestModal from "../../../components/ScheduleRequestModal";
+import { getVaccines } from "../../../services/authorityService";
 
-const vaccinesMock = [
-  {
-    id: "covid_pfizer",
-    name: "COVID-19 (Pfizer)",
-    doses: 2,
-    description:
-      "mRNA vaccine for COVID-19. Highly effective with recommended two doses.",
-    recommendedAge: "12+",
-    sideEffects: "Mild fever, fatigue, injection-site pain",
-  },
-  {
-    id: "bcg",
-    name: "BCG",
-    doses: 1,
-    description: "Protects against severe forms of tuberculosis.",
-    recommendedAge: "Newborn",
-    sideEffects: "Local skin reaction",
-  },
-  {
-    id: "mmr",
-    name: "MMR (Measles, Mumps, Rubella)",
-    doses: 2,
-    description: "Combined vaccine protecting against three viral infections.",
-    recommendedAge: "9 months+",
-    sideEffects: "Mild rash, fever",
-  },
-  {
-    id: "hpv",
-    name: "HPV",
-    doses: 2,
-    description:
-      "Protects against human papillomavirus; prevents cervical cancers.",
-    recommendedAge: "9–26",
-    sideEffects: "Headache, sore arm",
-  },
-  {
-    id: "flu",
-    name: "Seasonal Influenza",
-    doses: 1,
-    description: "Annual protection against seasonal flu strains.",
-    recommendedAge: "6 months+",
-    sideEffects: "Low-grade fever, aches",
-  },
-];
+// Vaccines will be fetched from API
 
 const centresMock = [
   {
@@ -141,6 +99,9 @@ const CitizenSchedule = () => {
   );
   const [findingNearest, setFindingNearest] = useState(false);
   const [geoError, setGeoError] = useState(null);
+  const [vaccines, setVaccines] = useState([]);
+  const [vaccinesLoading, setVaccinesLoading] = useState(false);
+  const [vaccinesError, setVaccinesError] = useState("");
   const isNearestMode =
     visibleMarkers.length > 0 && visibleMarkers.length < centresMock.length;
   const visibleCentres = useMemo(() => {
@@ -151,9 +112,47 @@ const CitizenSchedule = () => {
 
   const filteredVaccines = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return vaccinesMock;
-    return vaccinesMock.filter((v) => v.name.toLowerCase().includes(q));
-  }, [query]);
+    const list = Array.isArray(vaccines) ? vaccines : [];
+    if (!q) return list;
+    return list.filter((v) => (v.name || "").toLowerCase().includes(q));
+  }, [query, vaccines]);
+
+  // Fetch vaccines from API on mount
+  useEffect(() => {
+    let mounted = true;
+    async function fetchVaccines() {
+      setVaccinesLoading(true);
+      setVaccinesError("");
+      try {
+        const res = await getVaccines();
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+        const normalized = list.map((v, idx) => ({
+          id: v.id ?? `v-${idx}`,
+          name: v.name ?? v.vaccine_name ?? "Unnamed Vaccine",
+          description: v.description ?? "",
+          doses: v.doses,
+          recommendedAge: v.recommendedAge,
+          sideEffects: v.sideEffects,
+        }));
+        if (mounted) setVaccines(normalized);
+      } catch (err) {
+        const msg = err?.message || "Failed to load vaccines";
+        if (mounted) setVaccinesError(msg);
+      } finally {
+        if (mounted) setVaccinesLoading(false);
+      }
+    }
+    fetchVaccines();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const mapMarkers = useMemo(
     () =>
@@ -255,11 +254,11 @@ const CitizenSchedule = () => {
       </div>
 
       {/* Vaccine selector */}
-      <div className="rounded-2xl bg-white/70 backdrop-blur-md shadow-sm ring-1 ring-[#081F2E]/10 p-6">
+      <div className="relative z-[9999] rounded-2xl bg-white/70 backdrop-blur-md shadow-sm ring-1 ring-[#081F2E]/10 p-6">
         <label className="text-sm font-medium text-[#0c2b40]">
           Select Vaccine
         </label>
-        <div className="relative mt-2">
+        <div className="relative z-50 mt-2">
           <div className="flex items-center gap-2 rounded-xl ring-1 ring-[#081F2E]/10 bg-white px-3 py-2">
             <FiSearch className="text-[#081F2E]/70" />
             <input
@@ -271,6 +270,7 @@ const CitizenSchedule = () => {
               onFocus={() => setOpen(true)}
               placeholder="Type to search (e.g., Pfizer, BCG)"
               className="w-full bg-transparent outline-none text-[#081F2E] placeholder:text-[#0c2b40]/50"
+              disabled={vaccinesLoading}
             />
             <button
               onClick={() => setOpen((o) => !o)}
@@ -279,6 +279,21 @@ const CitizenSchedule = () => {
               <FiChevronDown />
             </button>
           </div>
+          {vaccinesLoading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              className="mt-2 flex items-center gap-2 text-xs text-[#0c2b40]/70"
+            >
+              <div className="h-4 w-4 rounded-full border-2 border-[#081F2E] border-t-transparent animate-spin" />
+              Loading vaccines…
+            </motion.div>
+          )}
+          {vaccinesError && (
+            <div className="mt-2 text-xs text-[#F04E36]">{vaccinesError}</div>
+          )}
+
           <AnimatePresence>
             {open && (
               <motion.ul
@@ -286,21 +301,31 @@ const CitizenSchedule = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 6 }}
                 transition={{ type: "spring", stiffness: 260, damping: 24 }}
-                className="absolute z-40 mt-2 w-full max-h-56 overflow-auto rounded-xl bg-white shadow-lg ring-1 ring-[#081F2E]/10"
+                className="absolute z-[10000] mt-2 w-full max-h-56 overflow-auto rounded-xl bg-white shadow-lg ring-1 ring-[#081F2E]/10"
               >
-                {filteredVaccines.map((v) => (
-                  <li
-                    key={v.id}
-                    className="px-3 py-2 text-sm text-[#081F2E] hover:bg-[#081F2E]/5 cursor-pointer"
-                    onClick={() => {
-                      setSelected(v);
-                      setOpen(false);
-                    }}
-                  >
-                    {v.name}
+                {vaccinesLoading ? (
+                  <li className="px-3 py-2 text-sm text-[#0c2b40]/70 flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full border-2 border-[#081F2E] border-t-transparent animate-spin" />
+                    Loading vaccines…
                   </li>
-                ))}
-                {filteredVaccines.length === 0 && (
+                ) : vaccinesError ? (
+                  <li className="px-3 py-2 text-sm text-[#F04E36]">
+                    {vaccinesError}
+                  </li>
+                ) : filteredVaccines.length > 0 ? (
+                  filteredVaccines.map((v) => (
+                    <li
+                      key={v.id}
+                      className="px-3 py-2 text-sm text-[#081F2E] hover:bg-[#081F2E]/5 cursor-pointer"
+                      onClick={() => {
+                        setSelected(v);
+                        setOpen(false);
+                      }}
+                    >
+                      {v.name}
+                    </li>
+                  ))
+                ) : (
                   <li className="px-3 py-2 text-sm text-[#0c2b40]/70">
                     No matches
                   </li>
@@ -323,20 +348,28 @@ const CitizenSchedule = () => {
                 <div className="text-lg font-semibold text-[#081F2E]">
                   {selected.name}
                 </div>
-                <div className="text-sm text-[#0c2b40]/70">
-                  Recommended Age: {selected.recommendedAge}
+                {selected.recommendedAge && (
+                  <div className="text-sm text-[#0c2b40]/70">
+                    Recommended Age: {selected.recommendedAge}
+                  </div>
+                )}
+              </div>
+              {selected.doses && (
+                <div className="text-sm font-medium text-[#081F2E]">
+                  Doses: {selected.doses}
                 </div>
-              </div>
-              <div className="text-sm font-medium text-[#081F2E]">
-                Doses: {selected.doses}
-              </div>
+              )}
             </div>
-            <p className="mt-2 text-sm text-[#0c2b40]/80">
-              {selected.description}
-            </p>
-            <div className="mt-2 text-sm text-[#0c2b40]/70">
-              Common Side Effects: {selected.sideEffects}
-            </div>
+            {selected.description && (
+              <p className="mt-2 text-sm text-[#0c2b40]/80">
+                {selected.description}
+              </p>
+            )}
+            {selected.sideEffects && (
+              <div className="mt-2 text-sm text-[#0c2b40]/70">
+                Common Side Effects: {selected.sideEffects}
+              </div>
+            )}
           </motion.div>
         )}
       </div>
