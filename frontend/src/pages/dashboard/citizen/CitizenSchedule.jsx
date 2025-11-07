@@ -97,7 +97,7 @@ const centresMock = [
     name: "Dummy Health Centre 3",
     address: "Connaught Place, New Delhi",
     lat: 28.6139,
-    lng: 77.2090,
+    lng: 77.209,
     availableDate: "2025-11-25T00:00:00.000Z",
   },
 ];
@@ -126,7 +126,11 @@ const CitizenSchedule = () => {
   const [mapOpen, setMapOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestCentre, setRequestCentre] = useState(null);
-  const [toast, setToast] = useState({ show: false, type: "success", message: "" });
+  const [toast, setToast] = useState({
+    show: false,
+    type: "success",
+    message: "",
+  });
   const [visibleMarkers, setVisibleMarkers] = useState(
     centresMock.map((c) => ({
       id: c.id,
@@ -217,7 +221,12 @@ const CitizenSchedule = () => {
 
   const showAllCentres = () => {
     setVisibleMarkers(
-      centresMock.map((c) => ({ id: c.id, lat: c.lat, lng: c.lng, title: c.name }))
+      centresMock.map((c) => ({
+        id: c.id,
+        lat: c.lat,
+        lng: c.lng,
+        title: c.name,
+      }))
     );
     setShowAllMarkers(true);
   };
@@ -365,9 +374,6 @@ const CitizenSchedule = () => {
                   <div>
                     <div className="font-semibold text-[#081F2E]">{c.name}</div>
                     <div className="text-sm text-[#0c2b40]/70">{c.address}</div>
-                    <div className="text-sm text-[#0c2b40]/70">
-                      Available: {formatLongDate(c.availableDate)}
-                    </div>
                   </div>
                   <div className="flex items-end gap-2">
                     <button
@@ -387,7 +393,7 @@ const CitizenSchedule = () => {
                       }}
                       className="inline-flex items-center gap-2 rounded-lg bg-[#F04E36] text-white px-3 py-2 text-sm font-medium hover:bg-[#e3452f]"
                     >
-                      Send Request
+                      Book Appointment
                     </button>
                   </div>
                 </motion.div>
@@ -413,11 +419,17 @@ const CitizenSchedule = () => {
               </h3>
             </div>
             <button
-              onClick={() => (isNearestMode ? showAllCentres() : showNearestThree())}
+              onClick={() =>
+                isNearestMode ? showAllCentres() : showNearestThree()
+              }
               disabled={findingNearest}
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#F04E36] to-[#EAB308] text-white px-3 py-2 text-sm font-semibold shadow ring-1 ring-white/10 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#F04E36]/40"
             >
-              {findingNearest ? "Locating..." : isNearestMode ? "Show All" : "Show nearest"}
+              {findingNearest
+                ? "Locating..."
+                : isNearestMode
+                ? "Show All"
+                : "Show nearest"}
             </button>
           </div>
           <div className="mb-2 flex items-center justify-between">
@@ -454,7 +466,11 @@ const CitizenSchedule = () => {
         onClose={() => setRequestOpen(false)}
         onConfirm={() => {
           setRequestOpen(false);
-          setToast({ show: true, type: "success", message: "Successfully sent schedule request." });
+          setToast({
+            show: true,
+            type: "success",
+            message: "Successfully sent schedule request.",
+          });
           setTimeout(() => setToast((t) => ({ ...t, show: false })), 3500);
         }}
         centre={requestCentre}
