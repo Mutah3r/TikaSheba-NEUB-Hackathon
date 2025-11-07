@@ -47,7 +47,7 @@ const vacc_centreSchema = new mongoose.Schema({
       },
       vaccine_list: [
         {
-          vaccine_id: {
+          center_vaccine_id: {
             type: String,
             required: true,
           },
@@ -63,3 +63,15 @@ const vacc_centreSchema = new mongoose.Schema({
 
 const Vacc_centre = mongoose.model('Vacc_centre', vacc_centreSchema);
 module.exports = Vacc_centre;
+
+
+
+// create vaccine centre (all id, except stuff, which is initially zero)
+
+// update vaccine centre (all id, except stuff can be updated)
+
+
+
+// for stuff
+// add stuff or create stuff
+// update stuff vaccine list (body : center vaccine id list)

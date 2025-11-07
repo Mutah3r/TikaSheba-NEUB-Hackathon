@@ -15,3 +15,10 @@ const vaccineSchema = new mongoose.Schema({
 
 const Vaccine = mongoose.model('Vaccine', vaccineSchema);
 module.exports = Vaccine;
+
+
+
+// add vaccine or create new vaccine entry
+
+// update vaccine (name, description)
+

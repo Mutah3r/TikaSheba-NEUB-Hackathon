@@ -18,6 +18,10 @@ const centreVaccineSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  requested_stock: {
+    type: Number,
+    default: 0,
+  },
   created_at: {
     type: Date,
     required: true,
@@ -38,3 +42,13 @@ const centreVaccineSchema = new mongoose.Schema({
 
 const CentreVaccine = mongoose.model('CentreVaccine', centreVaccineSchema);
 module.exports = CentreVaccine;
+
+
+
+// authority
+// add or create center vaccine (centre_id, vaccine_id, vaccine_name)
+// delete center vaccine (only this schema id)
+
+
+
+
