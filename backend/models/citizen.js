@@ -36,7 +36,29 @@ const citizenSchema = new mongoose.Schema({
   otp: {
     type: String
   },
+  vaccine_taken : [
+    {
+        vaccine_id: {
+            type: String,
+            required: true,
+          },
+          vaccine_name: {
+            type: String,
+            required: true,
+          },
+          time_stamp: {
+            type: time_stamp,
+            require: true
+          }
+    }
+  ]
 });
 
 const Citizen = mongoose.model('Citizen', citizenSchema);
 module.exports = Citizen;
+
+
+// update citizen info api (basic info, like name, gender, phone number)
+
+
+// add vaccine taken, post api (vaccine_taken : [vaccine_id, name, time_stamp])
