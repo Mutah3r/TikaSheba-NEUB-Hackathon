@@ -123,7 +123,7 @@ async function loginVerify(req, res) {
       return res.status(500).json({ message: 'JWT secret not configured' });
     }
     const token = jwt.sign({ sub: citizen._id.toString(), role: 'citizen', phone: citizen.phone_number }, secret, { expiresIn: '7d' });
-    return res.json({ token });
+    return res.json({ token, role: 'citizen' });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to verify login OTP' });
   }

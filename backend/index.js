@@ -32,7 +32,7 @@ const swaggerSpec = swaggerJsdoc({
       version: '1.0.0',
       description: 'API documentation for TikaSheba backend services',
     },
-    servers: [{ url: 'http://localhost:8000' }],
+    servers: [{ url: 'http://localhost:8000' }, { url: 'https://558932ba9650.ngrok-free.app'}],
     components: {
       securitySchemes: {
         bearerAuth: {
