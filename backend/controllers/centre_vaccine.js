@@ -292,9 +292,15 @@ async function getAssignedForCentre(req, res) {
     }
     // Fetch assigned records for this centre and derive unique vaccine names
     const assigned = await CentreVaccine.find({ centre_id: centreId })
-      .select('vaccine_name')
+      .select('_id vaccine_name')
       .lean();
     const names = Array.from(new Set((assigned || []).map((d) => d.vaccine_name).filter(Boolean)));
+    const nameToCentreVaccineId = new Map();
+    for (const a of assigned || []) {
+      if (a?.vaccine_name && !nameToCentreVaccineId.has(a.vaccine_name)) {
+        nameToCentreVaccineId.set(a.vaccine_name, a._id?.toString());
+      }
+    }
 
     if (!names.length) {
       return res.status(200).json([]);
@@ -302,9 +308,14 @@ async function getAssignedForCentre(req, res) {
 
     // Fetch vaccine metadata by names and return only name and description
     const vaccines = await Vaccine.find({ name: { $in: names } })
-      .select('name description _id vaccine_id')
+      .select('name description _id')
       .lean();
-    const result = (vaccines || []).map((v) => ({ id: v._id.toString(), name: v.name, description: v.description, vaccine_id: v.vaccine_id }));
+    const result = (vaccines || []).map((v) => ({
+      id: v._id.toString(),
+      name: v.name,
+      description: v.description,
+      centre_vaccine_id: nameToCentreVaccineId.get(v.name) || null,
+    }));
     return res.status(200).json(result);
   } catch (err) {
     console.error('getAssignedForCentre error:', err);
