@@ -71,6 +71,7 @@ const CentreDashboard = () => {
   const totalServed = vaccines.reduce((acc, v) => acc + v.weeklyCount, 0);
   const totalDosage = totalServed; // placeholder: doses administered last week
   const weeklyWaste = Math.round(totalServed * 0.04); // placeholder estimate (4%)
+  const dailyServed = Math.round(totalServed / 7);
 
   return (
     <div className="space-y-6">
@@ -220,6 +221,11 @@ const CentreDashboard = () => {
                   <FiUsers className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Total Staff:</span>
                   <span className="font-semibold text-[#081F2E]">{centre.totalStaff}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FiTrendingUp className="text-[#081F2E]/70" />
+                  <span className="text-[#0c2b40]/80">Daily People Served:</span>
+                  <span className="font-semibold text-[#081F2E]">{dailyServed}</span>
                 </div>
               </div>
             </div>
