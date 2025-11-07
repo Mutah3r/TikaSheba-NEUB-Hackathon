@@ -22,6 +22,12 @@ import CentreForecast from "../pages/dashboard/centre/CentreForecast";
 import CentreStaff from "../pages/dashboard/centre/CentreStaff";
 import CentreLogs from "../pages/dashboard/centre/CentreLogs";
 import CentreAIInsights from "../pages/dashboard/centre/CentreAIInsights";
+import AuthorityDashboard from "../pages/dashboard/AuthorityDashboard";
+import AuthorityVaccines from "../pages/dashboard/authority/AuthorityVaccines";
+import AuthorityCentres from "../pages/dashboard/authority/AuthorityCentres";
+import AuthorityStockRequests from "../pages/dashboard/authority/AuthorityStockRequests";
+import AuthorityVisualization from "../pages/dashboard/authority/AuthorityVisualization";
+import AuthorityAIInsights from "../pages/dashboard/authority/AuthorityAIInsights";
 
 const router = createBrowserRouter([
   {
@@ -70,7 +76,18 @@ const router = createBrowserRouter([
               { path: "insights", Component: CentreAIInsights },
             ],
           },
-          { path: "authority", Component: AuthorityOnly },
+          {
+            path: "authority",
+            Component: AuthorityOnly,
+            children: [
+              { index: true, Component: AuthorityDashboard },
+              { path: "vaccines", Component: AuthorityVaccines },
+              { path: "centres", Component: AuthorityCentres },
+              { path: "requests", Component: AuthorityStockRequests },
+              { path: "visualization", Component: AuthorityVisualization },
+              { path: "ai", Component: AuthorityAIInsights },
+            ],
+          },
           { path: "unauthorized", Component: Unauthorized },
         ],
       },

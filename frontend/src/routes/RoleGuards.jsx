@@ -1,5 +1,4 @@
 import { Navigate, Outlet } from "react-router";
-import AuthorityDashboard from "../pages/dashboard/AuthorityDashboard";
 
 function roleMatches(required) {
   const role =
@@ -48,5 +47,6 @@ export function AuthorityOnly() {
       />
     );
   }
-  return <AuthorityDashboard />;
+  // Render nested authority routes (dashboard home as index, plus tabs)
+  return <Outlet />;
 }

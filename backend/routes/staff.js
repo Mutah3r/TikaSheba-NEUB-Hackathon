@@ -189,4 +189,50 @@ router.get('/:staff_id/efficiency', authenticateToken, authorizeRoles('vacc_cent
  */
 router.get('/centre_vaccine/:centre_vaccine_id/daily', authenticateToken, authorizeRoles('vacc_centre', 'authority'), controller.getDailyUsageByCentreVaccine);
 
+/**
+ * @swagger
+ * /api/staff/centre/{centre_id}/vaccine-usage:
+ *   get:
+ *     summary: List each staff in a centre with per-vaccine dose totals (used, wasted)
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: centre_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Staff list with per-vaccine totals
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 centre_id: { type: string }
+ *                 staff:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       staff_id: { type: string }
+ *                       centre_id: { type: string }
+ *                       vaccines:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             centre_vaccine_id: { type: string }
+ *                             vaccine_name: { type: string }
+ *                             total_dose_used: { type: number }
+ *                             total_dose_wasted: { type: number }
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Not found
+ */
+router.get('/centre/:centre_id/vaccine-usage', authenticateToken, authorizeRoles('vacc_centre', 'authority'), controller.getStaffVaccineUsageSummary);
+
 module.exports = router;

@@ -77,7 +77,14 @@ const DashboardLayout = () => {
       ];
     }
     if (roleSegment === "authority") {
-      return [{ to: basePath, label: "Home", icon: FiHome }];
+      return [
+        { to: basePath, label: "Home", icon: FiHome },
+        { to: `${basePath}/vaccines`, label: "Vaccines", icon: FiDatabase },
+        { to: `${basePath}/centres`, label: "Vaccine Centres", icon: FiUsers },
+        { to: `${basePath}/requests`, label: "Stock Requests", icon: FiClipboard },
+        { to: `${basePath}/visualization`, label: "Visualization", icon: FiBarChart2 },
+        { to: `${basePath}/ai`, label: "AI Insights", icon: FiMessageSquare },
+      ];
     }
     // vacc_centre / centre role
     return [

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middlewares/auth');
+const { authenticateToken, authorizeRoles } = require('../middlewares/auth');
 const controller = require('../controllers/overall');
 
 /**
@@ -32,5 +32,35 @@ const controller = require('../controllers/overall');
  *         description: User not found
  */
 router.get('/user', authenticateToken, controller.getUser);
+
+/**
+ * @swagger
+ * /api/global/ocr/vaccine-card:
+ *   post:
+ *     summary: OCR vaccination card image using Gemini and update citizen record
+ *     tags: [Global]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [image_base64]
+ *             properties:
+ *               image_base64: { type: string, description: "Base64-encoded image data" }
+ *               mimeType: { type: string, description: "Image MIME type, e.g., image/jpeg" }
+ *     responses:
+ *       200:
+ *         description: OCR result and update status
+ *       400:
+ *         description: Bad request or parse error
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Citizen not found
+ */
+router.post('/ocr/vaccine-card', authenticateToken, authorizeRoles('vacc_centre', 'staff', 'authority'), controller.ocrVaccinationCard);
 
 module.exports = router;

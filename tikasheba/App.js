@@ -53,7 +53,7 @@ export default function App() {
       )}
       {screen === 'scanAppt' && <ScanAppointmentScreen token={token} />}
       {screen === 'citizenVaccines' && <CitizenVaccinesScreen token={token} />}
-      {screen === 'demoCard' && <DemoVaccinationCardScreen />}
+      {screen === 'demoCard' && <DemoVaccinationCardScreen token={token} />}
     </SafeAreaProvider>
   );
 }

@@ -1,6 +1,7 @@
 const Authority = require('../models/authority');
 const Citizen = require('../models/citizen');
 const VaccCentre = require('../models/vacc_centre');
+const Vaccine = require('../models/vaccine');
 
 async function getUser(req, res) {
   try {
@@ -64,3 +65,165 @@ async function getUser(req, res) {
 }
 
 module.exports = { getUser };
+
+// OCR vaccine card using Gemini and update citizen vaccine_taken
+async function ocrVaccinationCard(req, res) {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ success: false, message: 'Gemini API key not configured' });
+    }
+
+    const { image_base64, mimeType } = req.body || {};
+    if (!image_base64 || typeof image_base64 !== 'string' || image_base64.length < 50) {
+      return res.status(400).json({ success: false, message: 'image_base64 is required and must be base64-encoded image data' });
+    }
+
+    const vaccines = await Vaccine.find({});
+    const vaccineMapByName = new Map();
+    const vaccineContext = vaccines.map((v) => {
+      vaccineMapByName.set(String(v.name).toLowerCase(), String(v._id));
+      return { id: String(v._id), name: v.name };
+    });
+
+    // Build prompt instructing strict JSON output with support for multiple vaccines
+    const prompt = [
+      {
+        text:
+          'You are processing a vaccination card image. Extract fields and return STRICT JSON only. Schema:\n' +
+          '{"reg_no": string, "name"?: string, "vaccines"?: [{"vaccine_name"?: string, "vaccine_id"?: string, "time"?: ISO 8601 datetime}]}.\n' +
+          'Rules: 1) reg_no is MANDATORY. If reg_no cannot be confidently recognized, output {"success": false, "message": "reg_no not recognized"} and NO other text. ' +
+          '2) For vaccines, return an array where each item corresponds to one vaccine entry found in the image. ' +
+          '3) vaccine_name should match one of the known vaccines listed next (case-insensitive). If you are unsure about a vaccine, exclude it. ' +
+          '4) time should be ISO 8601 (e.g., 2024-08-15T10:30:00Z). ' +
+          '5) Output ONLY a single JSON object and NO additional text.\n' +
+          'Known vaccines (name -> id): ' + JSON.stringify(vaccineContext),
+      },
+    ];
+
+    // Dynamic import to support CommonJS
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    const contents = [
+      {
+        inlineData: {
+          mimeType: mimeType || 'image/jpeg',
+          data: image_base64,
+        },
+      },
+      ...prompt,
+    ];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+    });
+
+    let text = response?.text || '';
+    // Trim code fences if present
+    text = String(text).trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```json\n?|^```\n?|```$/g, '').trim();
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Failed to parse OCR output as JSON', raw: text });
+    }
+
+    // If model returned explicit failure
+    if (parsed && parsed.success === false) {
+      return res.status(200).json(parsed);
+    }
+
+    const reg_no = parsed?.reg_no && String(parsed.reg_no).trim();
+    if (!reg_no) {
+      return res.status(200).json({ success: false, message: 'reg_no not recognized' });
+    }
+
+    const name = parsed?.name ? String(parsed.name).trim() : undefined;
+
+    // Support multiple vaccine entries via `vaccines` array; fallback to single entry schema
+    let items = Array.isArray(parsed?.vaccines) ? parsed.vaccines : [];
+    if (!items.length) {
+      // Backward compatibility with single-item schema
+      const single = {
+        vaccine_name: parsed?.vaccine_name,
+        vaccine_id: parsed?.vaccine_id,
+        time: parsed?.time,
+      };
+      if (single.vaccine_name || single.vaccine_id || single.time) items = [single];
+    }
+
+    const validEntries = [];
+    const invalidEntries = [];
+    for (const it of items) {
+      let vaccine_name = it?.vaccine_name ? String(it.vaccine_name).trim() : undefined;
+      let vaccine_id = it?.vaccine_id ? String(it.vaccine_id).trim() : undefined;
+      let time = it?.time ? String(it.time).trim() : undefined;
+
+      if (!vaccine_id && vaccine_name) {
+        const id = vaccineMapByName.get(vaccine_name.toLowerCase());
+        if (id) vaccine_id = id;
+      }
+      if (vaccine_id && !vaccine_name) {
+        const v = vaccines.find((vx) => String(vx._id) === String(vaccine_id));
+        if (v) vaccine_name = v.name;
+      }
+
+      if (!vaccine_id || !vaccine_name) {
+        invalidEntries.push({ vaccine_name: vaccine_name || null, vaccine_id: vaccine_id || null, time });
+        continue;
+      }
+
+      let ts = new Date();
+      if (time) {
+        const t = new Date(time);
+        if (!isNaN(t.getTime())) ts = t;
+      }
+      validEntries.push({ vaccine_id, vaccine_name, time_stamp: ts });
+    }
+
+    // Update citizen record
+    const citizen = await Citizen.findOne({ reg_no });
+    if (!citizen) {
+      return res.status(404).json({ success: false, message: 'Citizen not found for reg_no', data: { reg_no } });
+    }
+
+    // Optionally update name if provided and different
+    if (name && !citizen.name) {
+      citizen.name = name;
+    }
+
+    if (!Array.isArray(citizen.vaccine_taken)) citizen.vaccine_taken = [];
+    // Append all valid entries; naive duplicate handling (skip exact duplicate id+timestamp)
+    for (const entry of validEntries) {
+      const dup = citizen.vaccine_taken.find(
+        (e) => String(e.vaccine_id) === String(entry.vaccine_id) && new Date(e.time_stamp).getTime() === entry.time_stamp.getTime()
+      );
+      if (!dup) {
+        citizen.vaccine_taken.push(entry);
+      }
+    }
+    await citizen.save();
+
+    return res.json({
+      success: true,
+      message: 'OCR parsed and citizen updated',
+      data: {
+        reg_no,
+        name: name || citizen.name,
+        updated_count: validEntries.length,
+        ignored_count: invalidEntries.length,
+        inserted: validEntries.map((v) => ({ vaccine_id: v.vaccine_id, vaccine_name: v.vaccine_name, time: v.time_stamp.toISOString() })),
+        ignored: invalidEntries,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to process OCR', error: err?.message });
+  }
+}
+
+module.exports.ocrVaccinationCard = ocrVaccinationCard;

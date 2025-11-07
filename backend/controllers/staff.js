@@ -224,3 +224,50 @@ async function getDailyUsageByCentreVaccine(req, res) {
 }
 
 module.exports.getDailyUsageByCentreVaccine = getDailyUsageByCentreVaccine;
+
+// Centre or Authority: list each staff in a centre with per-vaccine totals (dose_used, dose_wasted)
+async function getStaffVaccineUsageSummary(req, res) {
+  try {
+    const { centre_id } = req.params;
+    if (!centre_id) {
+      return res.status(400).json({ message: 'centre_id is required' });
+    }
+    if (!req.user || !['vacc_centre', 'authority'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    if (req.user.role === 'vacc_centre' && req.user.vc_id !== centre_id) {
+      return res.status(403).json({ message: 'Forbidden: different centre' });
+    }
+
+    const staffDocs = await Staff.find({ centre_id }).lean();
+    const staff = staffDocs.map((doc) => {
+      const vaccines = (doc.vaccine_list || []).map((v) => {
+        const totals = (v.log || []).reduce(
+          (acc, l) => {
+            acc.used += Number(l.dose_used) || 0;
+            acc.wasted += Number(l.dose_wasted) || 0;
+            return acc;
+          },
+          { used: 0, wasted: 0 }
+        );
+        return {
+          centre_vaccine_id: v.centre_vaccine_id,
+          vaccine_name: v.vaccine_name,
+          total_dose_used: totals.used,
+          total_dose_wasted: totals.wasted,
+        };
+      });
+      return {
+        staff_id: doc.staff_id,
+        centre_id: doc.centre_id,
+        vaccines,
+      };
+    });
+
+    return res.json({ centre_id, staff });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to list staff vaccine usage' });
+  }
+}
+
+module.exports.getStaffVaccineUsageSummary = getStaffVaccineUsageSummary;
