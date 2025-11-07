@@ -7,15 +7,18 @@ async function sendSms(number, message) {
     throw new Error('BulkSMSBD API configuration missing');
   }
   const url = 'http://bulksmsbd.net/api/smsapi';
-  const params = new URLSearchParams({
+  // POST body (no query params). Supports single or comma-separated numbers.
+  const body = new URLSearchParams({
     api_key: apiKey,
-    type: 'text',
-    number: number,
     senderid: senderId,
+    number: number,
     message: message,
   });
-  const fullUrl = `${url}?${params.toString()}`;
-  const res = await axios.get(fullUrl, { timeout: 10000 });
+  const res = await axios.post(url, body.toString(), {
+    timeout: 10000,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  console.log(res.data)
   return res.data;
 }
 

@@ -9,6 +9,8 @@ async function register(req, res) {
     if (!name || !reg_no || !DOB || !phone_number || typeof NID_or_Birth !== 'boolean' || !gender) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
+
+    console.log(req.body);
     const otp = generateOtp();
     let citizen = await Citizen.findOne({ phone_number });
     if (citizen) {
@@ -25,8 +27,20 @@ async function register(req, res) {
       citizen = await Citizen.create({ name, reg_no, NID_no, Birth_Certificate_no, NID_or_Birth, gender, DOB: new Date(DOB), phone_number, otp });
     }
     try {
+      console.log("Trying to send SMS....");
       await sendSms(phone_number, `Your TikaSheba verification OTP is ${otp}`);
+      console.log("SMS sent successfully.");
     } catch (smsErr) {
+      if (smsErr.response) {
+        console.error('Failed to send SMS: API responded with error', {
+          status: smsErr.response.status,
+          data: smsErr.response.data,
+        });
+      } else if (smsErr.request) {
+        console.error('Failed to send SMS: No response received from API', smsErr.message);
+      } else {
+        console.error('Failed to send SMS:', smsErr.message);
+      }
       // Even if SMS fails, keep the record so they can request OTP again
     }
     return res.status(200).json({ message: 'OTP sent to phone number' });
@@ -52,7 +66,7 @@ async function verify(req, res) {
       return res.status(500).json({ message: 'JWT secret not configured' });
     }
     const token = jwt.sign({ sub: citizen._id.toString(), role: 'citizen', phone: citizen.phone_number }, secret, { expiresIn: '7d' });
-    return res.json({ token });
+    return res.json({ token, role: 'citizen' });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to verify OTP' });
   }
@@ -73,7 +87,19 @@ async function loginRequest(req, res) {
     await citizen.save();
     try {
       await sendSms(phone_number, `Your TikaSheba login OTP is ${otp}`);
-    } catch (smsErr) {}
+      console.log('Login OTP SMS sent successfully.');
+    } catch (smsErr) {
+      if (smsErr.response) {
+        console.error('Failed to send login OTP SMS: API responded with error', {
+          status: smsErr.response.status,
+          data: smsErr.response.data,
+        });
+      } else if (smsErr.request) {
+        console.error('Failed to send login OTP SMS: No response received from API', smsErr.message);
+      } else {
+        console.error('Failed to send login OTP SMS:', smsErr.message);
+      }
+    }
     return res.status(200).json({ message: 'OTP sent to phone number' });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to send login OTP' });

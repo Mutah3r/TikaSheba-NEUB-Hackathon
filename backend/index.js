@@ -30,6 +30,7 @@ const swaggerSpec = swaggerJsdoc({
     info: {
       title: 'TikaSheba API DOCUMENTATION',
       version: '1.0.0',
+      description: 'API documentation for TikaSheba backend services',
     },
     servers: [{ url: 'http://localhost:8000' }],
     components: {
