@@ -14,6 +14,7 @@ import EmailModal from "../../components/EmailModal";
 import Notification from "../../components/Notification";
 import { requestCitizenLoginOtp, verifyLoginOtp } from "../../services/citizenService";
 import { authorityLogin } from "../../services/authorityService";
+import { centreLogin } from "../../services/centreService";
 
 const TABS = [
   { key: "citizen", label: "Citizen", icon: FiPhone },
@@ -26,6 +27,7 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState("citizen");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [centreId, setCentreId] = useState("");
   const [password, setPassword] = useState("");
   const [otpOpen, setOtpOpen] = useState(false);
   const [submittingOtp, setSubmittingOtp] = useState(false);
@@ -100,13 +102,13 @@ const Login = () => {
 
   const handleCredentialLogin = async () => {
     setError("");
-    const validEmail = /.+@.+\..+/.test(email);
-    if (!validEmail || password.length < 4) {
-      setError("Check your email and password.");
-      return;
-    }
 
     if (activeTab === "authority") {
+      const validEmail = /.+@.+\..+/.test(email);
+      if (!validEmail || password.length < 4) {
+        setError("Check your email and password.");
+        return;
+      }
       try {
         setCredentialSubmitting(true);
         const res = await authorityLogin({ email, password });
@@ -122,14 +124,27 @@ const Login = () => {
         setCredentialSubmitting(false);
       }
     } else if (activeTab === "centre") {
-      // Keep existing mock for centre login
-      setCredentialSubmitting(true);
-      setTimeout(() => {
-        localStorage.setItem("role", "centre");
-        localStorage.setItem("auth_token", "mock_token_centre");
+      if (!centreId || password.length < 4) {
+        setError("Enter your Centre ID and password.");
+        return;
+      }
+      try {
+        setCredentialSubmitting(true);
+        const res = await centreLogin({ vc_id: centreId, password });
+        const token = res?.token;
+        const roleResp = res?.role;
+        if (token) localStorage.setItem("auth_token", token);
+        // Map backend role 'vacc_cdntre' to app role 'centre'
+        const appRole = roleResp === "vacc_cdntre" ? "centre" : roleResp || "centre";
+        localStorage.setItem("role", appRole);
+        setToast({ show: true, message: "Logged in successfully." });
+        setTimeout(() => setToast({ show: false, message: "" }), 3500);
         navigate("/dashboard/centre");
+      } catch (err) {
+        setError(err?.message || "Invalid credentials. Please try again.");
+      } finally {
         setCredentialSubmitting(false);
-      }, 700);
+      }
     }
   };
 
@@ -224,14 +239,14 @@ const Login = () => {
           className="space-y-4"
         >
           <div className="grid gap-3">
-            <label className="block text-sm font-medium">Email</label>
+            <label className="block text-sm font-medium">Vaccination Centre ID</label>
             <div className="relative">
-              <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0c2b40]/50" />
+              <FiHome className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0c2b40]/50" />
               <input
-                type="email"
-                placeholder="centre@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="e.g. VC-000123"
+                value={centreId}
+                onChange={(e) => setCentreId(e.target.value)}
                 className="w-full rounded-xl border border-[#EAB308]/30 focus:border-[#EAB308] outline-none pl-9 pr-3 py-2"
               />
             </div>
