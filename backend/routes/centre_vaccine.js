@@ -244,6 +244,22 @@ router.put('/:id/request', authenticateToken, authorizeRoles('vacc_centre'), con
 
 /**
  * @swagger
+ * /api/centre_vaccine/assigned:
+ *   get:
+ *     summary: Get all vaccines assigned to the current centre (centre only)
+ *     tags: [Centre Vaccine]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of assigned centre vaccines
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/assigned', authenticateToken, authorizeRoles('vacc_centre'), controller.getAssignedForCentre);
+
+/**
+ * @swagger
  * /api/centre_vaccine/available/{vaccine_id}:
  *   get:
  *     summary: Get all centres with current stock for a vaccine (public)

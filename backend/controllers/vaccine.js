@@ -1,6 +1,9 @@
 const Vaccine = require('../models/vaccine');
 const VaccineLog = require('../models/vaccine_log');
 const Citizen = require('../models/citizen');
+const VaccCentre = require('../models/vacc_centre');
+const CenterCapacity = require('../models/center_maximum_capacity');
+const Staff = require('../models/staff');
 
 async function addVaccine(req, res) {
   try {
@@ -175,3 +178,77 @@ module.exports.getLogsByCentre = getLogsByCentre;
 module.exports.getLogsByStaff = getLogsByStaff;
 module.exports.getLogsByCitizen = getLogsByCitizen;
 module.exports.getLogsByRegNo = getLogsByRegNo;
+
+// Centre Overview (Details and last-week metrics)
+async function getCentreOverview(req, res) {
+  try {
+    const { centre_id } = req.params;
+    if (!centre_id) return res.status(400).json({ message: 'centre_id is required' });
+
+    const role = req.user?.role;
+    // RBAC: staff and vacc_centre can only access their own centre
+    if ((role === 'vacc_centre' || role === 'staff') && req.user.vc_id !== centre_id) {
+      return res.status(403).json({ message: 'Forbidden: centre mismatch' });
+    }
+
+    // Centre details
+    const centreDoc = await VaccCentre.findOne({ vc_id: centre_id });
+    if (!centreDoc) {
+      return res.status(404).json({ message: 'Centre not found' });
+    }
+    const totalStaff = Array.isArray(centreDoc.staffs) ? centreDoc.staffs.length : 0;
+
+    // Capacity
+    const capDoc = await CenterCapacity.findOne({ centre_id });
+    const maximumCapacity = capDoc?.capacity ?? 0;
+
+    // Last week range
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - 7);
+
+    // People served & dosages (using VaccineLog entries)
+    const servedCount = await VaccineLog.countDocuments({
+      centre_id,
+      date: { $gte: weekStart, $lte: now },
+    });
+    const dosagesCount = servedCount;
+
+    // Wasted vaccines from staff logs
+    const staffDocs = await Staff.find({ centre_id });
+    let wastedCount = 0;
+    for (const s of staffDocs) {
+      if (Array.isArray(s.vaccine_list)) {
+        for (const v of s.vaccine_list) {
+          if (Array.isArray(v.log)) {
+            for (const l of v.log) {
+              const d = new Date(l.date);
+              if (d >= weekStart && d <= now) {
+                wastedCount += Number(l.dose_wasted || 0);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return res.json({
+      centre: {
+        name: centreDoc.name,
+        location: centreDoc.location,
+        id: centreDoc.vc_id,
+        total_staff: totalStaff,
+        maximum_capacity: maximumCapacity,
+      },
+      last_week: {
+        total_people_served: servedCount,
+        vaccine_dosages: dosagesCount,
+        wasted_vaccines: wastedCount,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to fetch centre overview' });
+  }
+}
+
+module.exports.getCentreOverview = getCentreOverview;

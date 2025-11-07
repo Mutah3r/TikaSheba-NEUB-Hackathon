@@ -215,4 +215,7 @@ router.get('/log/citizen/:citizen_id', authenticateToken, authorizeRoles('citize
  */
 router.get('/log/reg/:reg_no', authenticateToken, authorizeRoles('citizen','staff', 'authority', 'vacc_centre'), controller.getLogsByRegNo);
 
+// Centre Overview (details and last-week metrics)
+router.get('/centre/:centre_id/overview', authenticateToken, authorizeRoles('authority', 'vacc_centre', 'staff'), controller.getCentreOverview);
+
 module.exports = router;

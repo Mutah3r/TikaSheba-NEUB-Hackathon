@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FiDroplet,
   FiHash,
@@ -20,69 +20,84 @@ import {
   YAxis,
 } from "recharts";
 
-const CentreDashboard = () => {
-  const centre = useMemo(
-    () => ({
-      name: "Dhaka Central Vaccination Centre",
-      location: "Dhaka, Bangladesh",
-      id: "CTR-00123",
-      totalStaff: 28,
-    }),
-    []
-  );
+import { getCurrentUser } from "../../services/userService";
+import { getCentreOverview } from "../../services/vaccineService";
+import { listAssignedCentreVaccines } from "../../services/centreVaccineService";
 
-  const vaccines = useMemo(
+const CentreDashboard = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [centre, setCentre] = useState(null);
+  const [lastWeek, setLastWeek] = useState(null);
+  const [vaccines, setVaccines] = useState([]);
+  const [vaccinesLoading, setVaccinesLoading] = useState(true);
+  const [vaccinesError, setVaccinesError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+        setVaccinesLoading(true);
+        setVaccinesError("");
+        const user = await getCurrentUser();
+        const vcId = user?.vc_id;
+        if (!vcId) throw new Error("Missing centre ID for current user");
+        const [overviewRes, assignedRes] = await Promise.allSettled([
+          getCentreOverview(vcId),
+          listAssignedCentreVaccines(),
+        ]);
+        if (!mounted) return;
+        if (overviewRes.status === "fulfilled") {
+          setCentre(overviewRes.value?.centre || null);
+          setLastWeek(overviewRes.value?.last_week || null);
+        } else {
+          setError(overviewRes.reason?.message || "Failed to load centre overview");
+        }
+        if (assignedRes.status === "fulfilled") {
+          const assigned = Array.isArray(assignedRes.value) ? assignedRes.value : [];
+          const normalized = assigned.map((a, idx) => ({
+            id: a.id ?? a.vaccine_id ?? "",
+            name: a.name ?? a.vaccine_name ?? "Unknown Vaccine",
+            description: a.description ?? "",
+            _key: a.name ?? `row-${idx}`,
+          }));
+          setVaccines(normalized);
+        } else {
+          setVaccinesError(assignedRes.reason?.message || "Failed to load assigned vaccines");
+        }
+      } catch (err) {
+        if (!mounted) return;
+        setError(err?.message || "Failed to load centre overview");
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          setVaccinesLoading(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const [selected, setSelected] = useState(null);
+  const chartData = useMemo(
     () => [
-      {
-        id: "covid_booster",
-        name: "COVID-19 Booster",
-        desc: "mRNA-based booster to extend COVID-19 protection.",
-        img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop&q=60",
-        weeklyCount: 112,
-      },
-      {
-        id: "hep_b",
-        name: "Hepatitis B",
-        desc: "Prevents Hepatitis B; recommended series at varied ages.",
-        img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop&q=60",
-        weeklyCount: 76,
-      },
-      {
-        id: "influenza",
-        name: "Influenza Seasonal",
-        desc: "Annual flu shot tailored to current strains.",
-        img: "https://images.unsplash.com/photo-1550831107-1553da8c8464?w=800&auto=format&fit=crop&q=60",
-        weeklyCount: 54,
-      },
-      {
-        id: "tetanus",
-        name: "Tetanus",
-        desc: "Protects against tetanus; often given as part of Td.",
-        img: "https://images.unsplash.com/photo-1582545144319-0d3f85fddc8b?w=800&auto=format&fit=crop&q=60",
-        weeklyCount: 31,
-      },
-      {
-        id: "bcg",
-        name: "BCG",
-        desc: "Protects newborns against severe forms of tuberculosis.",
-        img: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop&q=60",
-        weeklyCount: 22,
-      },
+      { name: "COVID-19 Booster", weeklyCount: 112 },
+      { name: "Hepatitis B", weeklyCount: 76 },
+      { name: "Influenza Seasonal", weeklyCount: 54 },
+      { name: "Tetanus", weeklyCount: 31 },
+      { name: "BCG", weeklyCount: 22 },
     ],
     []
   );
-
-  const [selected, setSelected] = useState(null);
-
-  const maxWeekly = Math.max(...vaccines.map((v) => v.weeklyCount));
-  const chartData = useMemo(
-    () => vaccines.map((v) => ({ name: v.name, weeklyCount: v.weeklyCount })),
-    [vaccines]
-  );
-  const totalServed = vaccines.reduce((acc, v) => acc + v.weeklyCount, 0);
-  const totalDosage = totalServed; // placeholder: doses administered last week
-  const weeklyWaste = Math.round(totalServed * 0.04); // placeholder estimate (4%)
-  const dailyServed = Math.round(totalServed / 7);
+  const totalServed = lastWeek?.total_people_served ?? 0;
+  const totalDosage = lastWeek?.vaccine_dosages ?? totalServed;
+  const weeklyWaste = lastWeek?.wasted_vaccines ?? Math.round((totalServed || 100) * 0.04);
+  const maximumCapacity = centre?.maximum_capacity ?? Math.round(totalServed / 7);
 
   return (
     <div className="space-y-6">
@@ -93,36 +108,46 @@ const CentreDashboard = () => {
         transition={{ type: "spring", stiffness: 240, damping: 22 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
-        {/* Total People Served (Last Week) */}
-        <div className="rounded-2xl bg-white shadow ring-1 ring-[#081F2E]/10 p-5">
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#081F2E]/10 text-[#081F2E] mb-3">
-            <FiUsers />
+        {loading ? (
+          <>
+            <div className="rounded-2xl bg-white shadow ring-1 ring-[#081F2E]/10 p-5 animate-pulse h-[120px]" />
+            <div className="rounded-2xl bg-white shadow ring-1 ring-[#EAB308]/20 p-5 animate-pulse h-[120px]" />
+            <div className="rounded-2xl bg-white shadow ring-1 ring-[#F04E36]/10 p-5 animate-pulse h-[120px]" />
+          </>
+        ) : (
+          <>
+          {/* Total People Served (Last Week) */}
+          <div className="rounded-2xl bg-white shadow ring-1 ring-[#081F2E]/10 p-5">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#081F2E]/10 text-[#081F2E] mb-3">
+              <FiUsers />
+            </div>
+            <p className="text-sm text-[#0c2b40]/70">
+              Total People Served (Last Week)
+            </p>
+            <p className="text-lg font-semibold">{totalServed}</p>
           </div>
-          <p className="text-sm text-[#0c2b40]/70">
-            Total People Served (Last Week)
-          </p>
-          <p className="text-lg font-semibold">{totalServed}</p>
-        </div>
-        {/* Vaccine Dosages (Last Week) */}
-        <div className="rounded-2xl bg-white shadow ring-1 ring-[#EAB308]/20 p-5">
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAB308]/10 text-[#EAB308] mb-3">
-            <FiDroplet />
+          {/* Vaccine Dosages (Last Week) */}
+          <div className="rounded-2xl bg-white shadow ring-1 ring-[#EAB308]/20 p-5">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAB308]/10 text-[#EAB308] mb-3">
+              <FiDroplet />
+            </div>
+            <p className="text-sm text-[#0c2b40]/70">
+              Vaccine Dosages (Last Week)
+            </p>
+            <p className="text-lg font-semibold">{totalDosage}</p>
           </div>
-          <p className="text-sm text-[#0c2b40]/70">
-            Vaccine Dosages (Last Week)
-          </p>
-          <p className="text-lg font-semibold">{totalDosage}</p>
-        </div>
-        {/* Wasted Vaccines (Last Week) */}
-        <div className="rounded-2xl bg-white shadow ring-1 ring-[#F04E36]/10 p-5">
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F04E36]/10 text-[#F04E36] mb-3">
-            <FiTrash2 />
+          {/* Wasted Vaccines (Last Week) */}
+          <div className="rounded-2xl bg-white shadow ring-1 ring-[#F04E36]/10 p-5">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F04E36]/10 text-[#F04E36] mb-3">
+              <FiTrash2 />
+            </div>
+            <p className="text-sm text-[#0c2b40]/70">
+              Wasted Vaccines (Last Week)
+            </p>
+            <p className="text-lg font-semibold">{weeklyWaste}</p>
           </div>
-          <p className="text-sm text-[#0c2b40]/70">
-            Wasted Vaccines (Last Week)
-          </p>
-          <p className="text-lg font-semibold">{weeklyWaste}</p>
-        </div>
+          </>
+        )}
       </motion.div>
 
       {/* Main content + Floating action bar */}
@@ -155,6 +180,9 @@ const CentreDashboard = () => {
                         Vaccine Name
                       </th>
                       <th className="text-left px-4 py-3 text-sm font-semibold text-[#0c2b40]">
+                        ID
+                      </th>
+                      <th className="text-left px-4 py-3 text-sm font-semibold text-[#0c2b40]">
                         Action
                       </th>
                     </tr>
@@ -164,27 +192,58 @@ const CentreDashboard = () => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      {vaccines.map((v, idx) => (
-                        <motion.tr
-                          key={v.id}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="border-t border-[#081F2E]/10 hover:bg-[#081F2E]/3"
-                        >
-                          <td className="px-4 py-3 text-[#081F2E] font-medium">
-                            {v.name}
+                      {vaccinesLoading ? (
+                        Array.from({ length: 3 }).map((_, idx) => (
+                          <motion.tr
+                            key={`skeleton-${idx}`}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="border-t border-[#081F2E]/10"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="h-4 w-40 bg-[#081F2E]/10 animate-pulse rounded" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="h-4 w-64 bg-[#081F2E]/10 animate-pulse rounded" />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="h-8 w-20 bg-[#081F2E]/10 animate-pulse rounded-xl" />
+                            </td>
+                          </motion.tr>
+                        ))
+                      ) : vaccinesError ? (
+                        <tr className="border-t border-[#081F2E]/10">
+                          <td colSpan={3} className="px-4 py-3 text-[#F04E36]">
+                            {vaccinesError}
                           </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => setSelected(v)}
-                              className="inline-flex items-center gap-2 rounded-xl bg-[#081F2E] text-white px-3 py-2 text-sm hover:bg-[#0c2b40]"
-                            >
-                              Details
-                            </button>
-                          </td>
-                        </motion.tr>
-                      ))}
+                        </tr>
+                      ) : (
+                        vaccines.map((v, idx) => (
+                          <motion.tr
+                            key={v._key || v.name || idx}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="border-t border-[#081F2E]/10 hover:bg-[#081F2E]/3"
+                          >
+                            <td className="px-4 py-3 text-[#081F2E] font-medium">
+                              {v.name}
+                            </td>
+                            <td className="px-4 py-3 text-[#0c2b40]/80">
+                              {v.id}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => setSelected(v)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-[#081F2E] text-white px-3 py-2 text-sm hover:bg-[#0c2b40]"
+                              >
+                                Details
+                              </button>
+                            </td>
+                          </motion.tr>
+                        ))
+                      )}
                     </motion.tbody>
                   </AnimatePresence>
                 </table>
@@ -264,44 +323,45 @@ const CentreDashboard = () => {
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#081F2E]/10 text-[#081F2E] ring-1 ring-[#081F2E]/20">
                   <FiInfo />
                 </div>
-                <h3 className="text-lg font-semibold text-[#081F2E]">
-                  Centre Details
-                </h3>
+                <h3 className="text-lg font-semibold text-[#081F2E]">Centre Details</h3>
               </div>
+              {error && (
+                <div className="mb-3 text-sm text-[#F04E36]">{error}</div>
+              )}
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2">
                   <FiUsers className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Name:</span>
                   <span className="font-semibold text-[#081F2E]">
-                    {centre.name}
+                    {centre?.name ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiMapPin className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Location:</span>
                   <span className="font-semibold text-[#081F2E]">
-                    {centre.location}
+                    {centre?.location ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiHash className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">ID:</span>
                   <span className="font-semibold text-[#081F2E]">
-                    {centre.id}
+                    {centre?.id ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiUsers className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Total Staff:</span>
                   <span className="font-semibold text-[#081F2E]">
-                    {centre.totalStaff}
+                    {centre?.total_staff ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiTrendingUp className="text-[#081F2E]/70" />
                   <span className="text-[#0c2b40]/80">Maximum Capacity:</span>
                   <span className="font-semibold text-[#081F2E]">
-                    {dailyServed}
+                    {maximumCapacity ?? "—"}
                   </span>
                 </div>
               </div>
@@ -328,18 +388,11 @@ const CentreDashboard = () => {
               onClick={(e) => e.stopPropagation()}
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg rounded-2xl bg-white ring-1 ring-[#081F2E]/10 shadow-xl"
             >
-              <div className="overflow-hidden rounded-t-2xl">
-                <img
-                  src={selected.img}
-                  alt={selected.name}
-                  className="h-40 w-full object-cover"
-                />
-              </div>
               <div className="p-5 space-y-3">
                 <h4 className="text-lg font-semibold text-[#081F2E]">
                   {selected.name}
                 </h4>
-                <p className="text-sm text-[#0c2b40]/80">{selected.desc}</p>
+                <p className="text-sm text-[#0c2b40]/80">{selected.description}</p>
                 <div className="flex justify-end">
                   <button
                     onClick={() => setSelected(null)}
