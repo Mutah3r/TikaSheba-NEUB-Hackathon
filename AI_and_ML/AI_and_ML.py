@@ -29,6 +29,30 @@ index = pc.Index(PINECONE_INDEX_NAME)
 
 app = FastAPI(title="Vaccine RAG Chatbot API (Gemini)")
 
+
+from fastapi.middleware.cors import CORSMiddleware
+
+# --- New CORS Configuration ---
+# Define the origins that are allowed to make requests to your API.
+# You MUST change 'http://localhost:8080' to the actual URL/Port of your frontend or external app.
+origins = [
+    "*", # ⚠️ WARNING: Use "*" only for testing/development. For production, specify exact domains.
+    "http://localhost",
+    "http://localhost:8000", # If your external data API is running on this port
+    "http://localhost:5173", # Example port for a common frontend framework
+    # Add any other origins (e.g., actual domain names) that need access
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+
 # --- 2. Data Models ---
 class VaccineStoreRequest(BaseModel):
     vaccine_name: str = Field(..., example="BCG")
@@ -524,6 +548,94 @@ async def get_vaccine_forecast(req: ForecastRequest):
         # In production, log the full error traceback
         print(f"Forecasting Error: {e}")
         raise HTTPException(status_code=500, detail=f"Model forecasting failed: {str(e)}")
+
+
+
+
+
+
+
+
+import httpx # Needed for making external asynchronous HTTP requests
+
+# --- New Data Models for Input ---
+
+class DemandForecastRequest(BaseModel):
+    centre_vaccine_id: str = Field(..., example="690e473c078a4481e3c69863")
+    days_to_forecast: int = Field(..., ge=1, le=365, example=30)
+
+# --- New API Endpoint ---
+
+@app.post("/forecast_demand", response_model=ForecastResponse)
+async def forecast_demand_endpoint(req: DemandForecastRequest):
+    """
+    Fetches historical usage data for a specific vaccine at a center from an external API,
+    transforms it, and then uses the internal /forecast endpoint (Prophet model) to predict future demand.
+    """
+    # URL for the external historical data API
+    external_api_url = f"http://localhost:8000/api/staff/centre_vaccine/{req.centre_vaccine_id}/daily"
+    
+    try:
+        # 1. Fetch historical data from external API
+        async with httpx.AsyncClient() as client:
+            response = await client.get(external_api_url, timeout=30.0)
+            response.raise_for_status() # Raises an exception for 4xx/5xx status codes
+            external_data = response.json()
+            
+    except httpx.HTTPError as e:
+        # Catch errors from the external service call
+        print(f"External API Error: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch data from the external historical API. Check external service status. Error: {e.response.status_code if e.response else 'Unknown'}"
+        )
+    except Exception as e:
+        # Catch general errors during the fetch process
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred during external data fetch: {str(e)}"
+        )
+
+    # 2. Extract and transform the data
+    history_data_points = []
+    
+    daily_records = external_data.get("daily", [])
+    
+    if not daily_records:
+        raise HTTPException(
+            status_code=404, 
+            detail="External API returned no historical usage data for this center/vaccine ID."
+        )
+
+    for record in daily_records:
+        # Transformation: Map 'total_dose_used' to 'amphules_used'
+        history_data_points.append(
+            DataPoint(
+                date=record.get("date"),
+                # Ensure the value is converted to float as required by the DataPoint model
+                amphules_used=float(record.get("total_dose_used", 0)) 
+            )
+        )
+
+    # 3. Construct the request for the internal /forecast API
+    internal_req = ForecastRequest(
+        history=history_data_points,
+        days_to_forecast=req.days_to_forecast
+    )
+
+    # 4. Call the existing internal forecasting function (get_vaccine_forecast) directly
+    try:
+        # Awaiting the call to the function defined for the /forecast endpoint
+        forecast_result = await get_vaccine_forecast(internal_req)
+        return forecast_result
+
+    except HTTPException as e:
+        # Propagate exceptions raised by the internal model (e.g., if history is too short)
+        raise e
+    except Exception as e:
+        print(f"Internal Forecasting Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal forecasting failed after data transformation: {str(e)}")
+
 
 
 
