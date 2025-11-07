@@ -58,7 +58,7 @@ module.exports = CentreVaccine;
 
 
 // vaccine center
-// update stock (add or remove stock count)
+// update stock (add or remove stock count): [if add stock count < request_sent]
 // get center vaccine by requested_status
 // send request (requested stock amount) : (update status to requested)
 
@@ -66,3 +66,8 @@ module.exports = CentreVaccine;
 
 // stuff
 // update (total_people, total_dosed, total_wasted)
+
+
+
+// Citizen:
+// get all vaccine center by vaccine id: 
