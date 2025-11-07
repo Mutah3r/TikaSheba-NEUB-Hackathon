@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 
 //centre_id, vaccine_id, vaccine_name, staff_id, date, people_dosed, dose_used, dose_wasted
 const vaccineLogSchema = new mongoose.Schema({
+  citizen_id: {
+    type: String,
+    require: true,
+  },
   centre_id: {
     type: String,
     required: true,
@@ -22,19 +26,25 @@ const vaccineLogSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
-  people_dosed: {
-    type: Number,
-    default: 0,
-  },
-  dose_used: {
-    type: Number,
-    default: 0,
-  },
-  dose_wasted: {
-    type: Number,
-    default: 0,
-  },
 });
 
 const VaccineLog = mongoose.model('VaccineLog', vaccineLogSchema);
 module.exports = VaccineLog;
+
+
+
+
+
+//stuff:
+// create log
+
+// center
+// get all log by center id
+// get all vaccine log by stuff id
+
+
+//citizen
+// get all log by citizen id
+
+
+

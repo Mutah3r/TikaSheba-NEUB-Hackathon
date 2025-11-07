@@ -18,9 +18,14 @@ const centreVaccineSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  requested_stock: {
-    type: Number,
-    default: 0,
+  requested_stock_amount : {
+        type: Number,
+        default : 0,
+  },
+  requested_status : {
+        type : String,
+        enum : ["Requested", "sent"],
+        default : None 
   },
   created_at: {
     type: Date,
@@ -48,7 +53,16 @@ module.exports = CentreVaccine;
 // authority
 // add or create center vaccine (centre_id, vaccine_id, vaccine_name)
 // delete center vaccine (only this schema id)
+// get requested stock by (centre vaccine id and requested stock status: requested)
+// get all requested stock by request status (requested)
+
+
+// vaccine center
+// update stock (add or remove stock count)
+// get center vaccine by requested_status
+// send request (requested stock amount) : (update status to requested)
 
 
 
-
+// stuff
+// update (total_people, total_dosed, total_wasted)

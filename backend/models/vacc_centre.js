@@ -30,35 +30,7 @@ const vacc_centreSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-  },
-  staffs: [
-    {
-      id: {
-        type: String,
-        required: true,
-      },
-      name: {
-        type: String,
-        required: true,
-      },
-      password: {
-        type: String,
-        required: true,
-      },
-      vaccine_list: [
-        {
-          center_vaccine_id: {
-            type: String,
-            required: true,
-          },
-          vaccine_name: {
-            type: String,
-            required: true,
-          },
-        },
-      ],
-    },
-  ],
+  }
 });
 
 const Vacc_centre = mongoose.model('Vacc_centre', vacc_centreSchema);
@@ -66,12 +38,10 @@ module.exports = Vacc_centre;
 
 
 
-// create vaccine centre (all id, except stuff, which is initially zero)
 
+// Authority:
+// create vaccine centre (all id, except stuff, which is initially zero)
 // update vaccine centre (all id, except stuff can be updated)
 
 
 
-// for stuff
-// add stuff or create stuff
-// update stuff vaccine list (body : center vaccine id list)
