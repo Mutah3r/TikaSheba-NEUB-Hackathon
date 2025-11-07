@@ -5,4 +5,9 @@ export function getWeeklyServed() {
   return api.get(`/graph/centre/served/last-7-days`);
 }
 
-export default { getWeeklyServed };
+// Centre appointment logs: citizen_name, vaccine_name, date, status
+export function getCentreLogs(params = {}) {
+  return api.get(`/graph/centre/logs`, { params });
+}
+
+export default { getWeeklyServed, getCentreLogs };
