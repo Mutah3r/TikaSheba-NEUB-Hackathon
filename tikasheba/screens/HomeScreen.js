@@ -3,7 +3,17 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 
-export default function HomeScreen({ user, onScanAppt, onCitizenVaccines, onDemoCard }) {
+export default function HomeScreen({
+  user,
+  onScanAppt,
+  onCitizenVaccines,
+  onDemoCard,
+  onMyVaccines,
+  onStaffLog,
+  onCentreAppointments,
+  onAppointmentDone,
+  onCentreSchedule,
+}) {
   const initials = (user?.name || '-')
     .split(' ')
     .map(w => w[0])
@@ -60,6 +70,49 @@ export default function HomeScreen({ user, onScanAppt, onCitizenVaccines, onDemo
               <View style={{ flex: 1 }}>
                 <Text style={styles.tileTitle}>Scan Vaccination Card</Text>
                 <Text style={styles.tileDesc}>Scan card and add vaccine data</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Core Staff Actions</Text>
+          <View style={styles.grid}>
+            <TouchableOpacity style={styles.tile} onPress={onMyVaccines}>
+              <Text style={styles.tileIcon}>🧪</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tileTitle}>My Assigned Vaccines</Text>
+                <Text style={styles.tileDesc}>See vaccines you handle</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.tile} onPress={onStaffLog}>
+              <Text style={styles.tileIcon}>🧾</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tileTitle}>Log Vaccine Usage</Text>
+                <Text style={styles.tileDesc}>Record used and wasted doses</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appointment Handling</Text>
+          <View style={styles.grid}>
+
+            <TouchableOpacity style={styles.tile} onPress={onCentreAppointments}>
+              <Text style={styles.tileIcon}>📅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tileTitle}>Centre Appointments</Text>
+                <Text style={styles.tileDesc}>List and update status</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.tile} onPress={onCentreSchedule}>
+              <Text style={styles.tileIcon}>🗓️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tileTitle}>Centre Schedule (30d)</Text>
+                <Text style={styles.tileDesc}>Capacity and slots overview</Text>
               </View>
             </TouchableOpacity>
           </View>
