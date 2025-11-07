@@ -1,4 +1,3 @@
-
 ## 💉 Project - TikaSheba
 
 > **TikaSheba** is an integrated, secure, and data-driven platform designed to **digitally transform and streamline the end-to-end national vaccination workflow**. It resolves critical issues like fragmented workflows, manual logging, and poor forecasting by offering role-based access to citizens, vaccination centers, staff, and health authorities. By leveraging a modern MERN stack architecture and integrating **advanced AI/ML automation** (including Meta Prophet and Gemini API), TikaSheba ensures real-time visibility, optimized stock management, and proactive demand forecasting to achieve maximum vaccination coverage and operational efficiency.
@@ -17,38 +16,7 @@ TikaSheba targets the following critical inefficiencies in traditional vaccinati
 
 ## Team Members 👥
 
-*You remain the same team, **\# TEAM ONTORPONTHIK***.
-
-  - **Arfatul Islam Asif** [](mailto:awakicde@gmail.com)
-  - **Unayes Ahmed Khan** [](mailto:unayeskhan.0808@gmail.com)
-  - **Mutaher Ahmed Shakil** [](mailto:mutaher.shakil@gmail.com)
-
------
-This is an excellent project, and I will ensure the documentation uses the exact clean, visually-rich, and structured style you established with EcoSync, making the technology stack shine.
-
-Here is the professional documentation for **TikaSheba**, including improved icons for the technology stack.
-
------
-
-## 💉 Project - TikaSheba
-
-> **TikaSheba** is an integrated, secure, and data-driven platform designed to **digitally transform and streamline the end-to-end national vaccination workflow**. It resolves critical issues like fragmented workflows, manual logging, and poor forecasting by offering role-based access to citizens, vaccination centers, staff, and health authorities. By leveraging a modern MERN stack architecture and integrating **advanced AI/ML automation** (including Meta Prophet and Gemini API), TikaSheba ensures real-time visibility, optimized stock management, and proactive demand forecasting to achieve maximum vaccination coverage and operational efficiency.
-
------
-
-## Problem Addressed 🛑
-
-TikaSheba targets the following critical inefficiencies in traditional vaccination management:
-
-  * **Fragmented Workflows:** Disjointed processes across citizens, centers, and authorities leading to missed appointments, poor coordination, and user frustration.
-  * **Operational Inefficiencies:** Reliance on manual coordination and paper-based logs hindering real-time tracking of vaccine usage, staff activity, and stock levels.
-  * **Mismatched Capacity and Demand:** Limited or non-existent forecasting capability causing critical mismatches between center capacity, available stock, and citizen appointment demand.
-
------
-
-## Team Members 👥
-
-*You remain the same team, **\# TEAM ONTORPONTHIK***.
+**\# TEAM ONTORPONTHIK**.
 
   - **Arfatul Islam Asif** [](mailto:awakicde@gmail.com)
   - **Unayes Ahmed Khan** [](mailto:unayeskhan.0808@gmail.com)
@@ -136,18 +104,15 @@ TikaSheba targets the following critical inefficiencies in traditional vaccinati
 
 -   ![GitHub](https://img.icons8.com/glyph-neue/48/000000/github.png) **GitHub**: For version control and collaborative development.
     
--   ![Docker](https://img.icons8.com/color/48/000000/docker.png) **Docker**: For containerization and consistent deployment environments.
-    
+
 -   ![Postman](https://img.icons8.com/dusk/48/000000/postman-api.png) **Postman**: For API testing and debugging.
     
--   ![Render](https://i.ibb.co/p1b3ZbD/render.png) **Render/Cloud Deployment**: For deploying both backend and frontend.
     
 -   ![Nginx](https://img.icons8.com/color/48/000000/nginx.png) **Nginx**: For reverse proxy and load balancing setup.
     
 
-Would you like me to include another short section (like **Problem Addressed** and **Key Features**) in this same visual style right after this one, using icons and formatted text as above?
 
------
+
 
 ## ✨ Key Features & Functional Requirements
 
@@ -176,10 +141,7 @@ A dedicated Python module (`AI_and_ML/`) leverages data-driven models for predic
 | Feature | ML Tool | Automation Goal |
 | :--- | :--- | :--- |
 | **Demand Forecasting** | Meta Prophet Model | Predicts appointment volumes by centre and date, informing capacity planning. |
-| **Capacity Optimization** | ML Recommendation | Recommends adjustments to stock and per-day limits based on historical usage and upcoming demand. |
-| **No-Show Prediction** | Classification Model | Identifies appointments at high risk of no-show to trigger proactive reminders/reschedules. |
-| **Anomaly Detection** | Statistical/ML Model | Flags irregularities in dose usage/wastage logs to improve accountability and quality control. |
-| **Citizen Segmentation** | Clustering/Embedding (Gemini) | Clusters citizens by vaccine history/engagement to tailor outreach and improve uptake. |
+| **Waste Forecasting** | Meta Prophet Model | Predicts appointment volumes by centre and date, informing capacity planning. |
 | **LLM Functions** | Gemini API (LLM) | Used for advanced search, summarizing complex reports, or context-aware citizen support. |
 
 -----
@@ -193,9 +155,6 @@ The TikaSheba roadmap focuses on real-time capabilities, deeper integrations, an
   * **Advanced Analytics** 🔬: Cohort-based outcomes, vaccine efficacy signals, and longitudinal reporting.
   * **DevOps Maturity** 🐳: CI/CD pipelines, Infrastructure-as-Code (IaC), and robust monitoring/alerting systems.
   * **Multilingual UX & Accessibility** 🌐: Localization across interfaces and WCAG-aligned design for broader reach.
-
-
-
 
 
 
