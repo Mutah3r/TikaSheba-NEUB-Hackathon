@@ -10,6 +10,8 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router";
 import OTPModal from "../../components/OTPModal";
+import EmailModal from "../../components/EmailModal";
+import Notification from "../../components/Notification";
 
 const TABS = [
   { key: "citizen", label: "Citizen", icon: FiPhone },
@@ -29,6 +31,9 @@ const Login = () => {
   const containerRef = useRef(null);
   const tabRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, width: 0, height: 40 });
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: "" });
 
   const tabIndex = useMemo(
     () => TABS.findIndex((t) => t.key === activeTab),
@@ -89,6 +94,12 @@ const Login = () => {
 
   return (
     <div className="space-y-6">
+      <Notification
+        show={toast.show}
+        type="success"
+        message={toast.message}
+        onClose={() => setToast({ show: false, message: "" })}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Login</h2>
@@ -199,7 +210,7 @@ const Login = () => {
           {error && <p className="text-sm text-[#F04E36]">{error}</p>}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => alert("Password reset link sent to your email.")}
+              onClick={() => setForgotOpen(true)}
               className="inline-flex items-center gap-1 text-sm text-[#081F2E] hover:underline"
             >
               <FiHelpCircle /> Forgot password?
@@ -249,7 +260,7 @@ const Login = () => {
           {error && <p className="text-sm text-[#F04E36]">{error}</p>}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => alert("Password reset link sent to your email.")}
+              onClick={() => setForgotOpen(true)}
               className="inline-flex items-center gap-1 text-sm text-[#081F2E] hover:underline"
             >
               <FiHelpCircle /> Forgot password?
@@ -263,6 +274,25 @@ const Login = () => {
           </div>
         </motion.div>
       )}
+      <EmailModal
+        isOpen={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        isSubmitting={forgotSubmitting}
+        onSubmit={(email) => {
+          setForgotSubmitting(true);
+          setTimeout(() => {
+            setForgotSubmitting(false);
+            setForgotOpen(false);
+            setToast({
+              show: true,
+              message: `Password reset link has been sent to ${email}. Please check your inbox.`,
+            });
+            setTimeout(() => setToast({ show: false, message: "" }), 4500);
+          }, 900);
+        }}
+        title="Forgot Password"
+        subtitle="Enter your email to receive a reset link"
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link, Outlet } from "react-router";
+import transparentLogo from "../assets/logo-text.png";
 import logo from "../assets/logo.png";
 
 const AuthLayout = () => {
@@ -9,9 +10,7 @@ const AuthLayout = () => {
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={logo} alt="Logo" className="h-10 w-10 object-contain" />
-            <div className="font-semibold tracking-wide text-lg">
-              NEUB Portal
-            </div>
+            <div className="font-semibold tracking-wide text-lg">TikaSheba</div>
           </div>
           <nav className="flex items-center gap-3">
             <Link
@@ -30,35 +29,24 @@ const AuthLayout = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 pb-12">
+      <main className="mx-auto max-w-6xl px-6 pb-12 min-h-[80vh] flex justify-center items-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", duration: 0.6 }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
         >
-          <div className="hidden lg:flex flex-col gap-4">
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-3xl font-bold"
-            >
-              Welcome to the NEUB Authentication Portal
-            </motion.h1>
-            <p className="text-[#0c2b40]/80 leading-relaxed">
+          <div className="hidden lg:flex flex-col gap-4 justify-center items-center">
+            <img
+              src={transparentLogo}
+              alt="Logo"
+              className="h-[250px] object-contain"
+            />
+            <p className="text-[#0c2b40]/80 leading-relaxed text-center">
               Seamless access for Citizens, Centres, and Authorities. Experience
               a modern, light and aesthetic interface powered by our secure mock
               flows.
             </p>
-            <div className="flex gap-3">
-              <span className="inline-flex items-center rounded-full bg-[#F04E36]/10 text-[#F04E36] px-3 py-1 text-xs font-medium">
-                Primary: #F04E36
-              </span>
-              <span className="inline-flex items-center rounded-full bg-[#EAB308]/20 text-[#081F2E] px-3 py-1 text-xs font-medium">
-                Secondary: #EAB308
-              </span>
-            </div>
           </div>
 
           <div className="relative">
