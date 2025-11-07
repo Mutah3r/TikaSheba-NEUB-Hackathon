@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { FiBarChart2, FiMapPin, FiPieChart } from "react-icons/fi";
 import {
   Bar,
@@ -13,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import GoogleMap from "../../../components/GoogleMap";
+import { getVaccineCentres } from "../../../services/centreService";
 
 // Real-world district HQ coordinates (approximate centroids)
 const BD_DISTRICTS = [
@@ -115,12 +117,38 @@ const VACCINATION_BY_GENDER = [
 ];
 
 const AuthorityVisualization = () => {
-  const districtMarkers = BD_DISTRICTS.map((d, i) => ({
-    id: i + 1,
-    title: d.name,
-    lat: d.lat,
-    lng: d.lng,
-  }));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [centreMarkers, setCentreMarkers] = useState([]);
+
+  useEffect(() => {
+    const fetchCentres = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await getVaccineCentres();
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : res?.data?.data || [];
+        const markers = list
+          .map((c, idx) => ({
+            id: c.id ?? c.vc_id ?? idx + 1,
+            title: c.name,
+            lat: Number(c.lattitude ?? c.latitude ?? NaN),
+            lng: Number(c.longitude ?? NaN),
+          }))
+          .filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng));
+        setCentreMarkers(markers);
+      } catch (err) {
+        setError(err?.message || "Failed to load vaccine centres");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCentres();
+  }, []);
 
   const genderColors = ["#081F2E", "#EAB308"]; // male, female
   return (
@@ -137,7 +165,7 @@ const AuthorityVisualization = () => {
         <h2 className="text-xl font-semibold text-[#081F2E]">Visualization</h2>
       </div>
 
-      {/* Map: Bangladesh District Markers */}
+      {/* Map: Vaccine Centres Map */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -147,17 +175,37 @@ const AuthorityVisualization = () => {
       >
         <div className="flex items-center gap-2 text-[#0c2b40] mb-3">
           <FiMapPin className="text-[#081F2E]" />
-          <span className="text-sm">Bangladesh Districts Map</span>
+          <span className="text-sm">Vaccine Centres Map</span>
           <span className="ml-auto text-xs text-[#0c2b40]/60">
-            Markers: {districtMarkers.length}
+            Markers: {centreMarkers.length}
           </span>
         </div>
-        <GoogleMap
-          markers={districtMarkers}
-          showAll
-          height={420}
-          className="ring-1 ring-[#081F2E]/10"
-        />
+        {loading ? (
+          <div className="h-[420px] rounded-xl bg-white ring-1 ring-[#081F2E]/10 p-4 flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 240, damping: 20 }}
+              className="flex flex-col items-center gap-3"
+            >
+              <div className="h-10 w-10 rounded-full border-2 border-[#081F2E] border-t-transparent animate-spin" />
+              <div className="text-xs text-[#0c2b40]/70">
+                Loading centres...
+              </div>
+            </motion.div>
+          </div>
+        ) : error ? (
+          <div className="h-[420px] rounded-xl bg-white ring-1 ring-[#081F2E]/10 p-4 grid place-items-center">
+            <div className="text-sm text-[#B00020]">{error}</div>
+          </div>
+        ) : (
+          <GoogleMap
+            markers={centreMarkers}
+            showAll
+            height={420}
+            className="ring-1 ring-[#081F2E]/10"
+          />
+        )}
       </motion.div>
 
       {/* Vaccination By Age: Bar Chart */}
