@@ -46,5 +46,7 @@ module.exports = VaccineLog;
 //citizen
 // get all log by citizen id
 
+///api will make in vaccine.js
+
 
 

@@ -30,7 +30,14 @@ const vacc_centreSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-  }
+  },
+  staffs: [
+    {
+      id: { type: String, required: true },
+      name: { type: String, required: true },
+      password: { type: String, required: true },
+    }
+  ]
 });
 
 const Vacc_centre = mongoose.model('Vacc_centre', vacc_centreSchema);
