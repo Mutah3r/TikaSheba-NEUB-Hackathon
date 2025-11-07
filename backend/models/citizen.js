@@ -4,8 +4,7 @@ const mongoose = require('mongoose');
 
 const citizenSchema = new mongoose.Schema({
   name: {
-    type: String,
-    required: true,
+    type: String
   },
   reg_no: {
     type: String,
@@ -18,20 +17,16 @@ const citizenSchema = new mongoose.Schema({
     type: String,
   },
   NID_or_Birth: {
-    type: Boolean,
-    required: true,
+    type: Boolean
   },
   gender: {
-    type: String,
-    required: true,
+    type: String
   },
   DOB: {
-    type: Date,
-    required: true,
+    type: Date
   },
   phone_number: {
-    type: String,
-    required: true,
+    type: String
   },
   otp: {
     type: String

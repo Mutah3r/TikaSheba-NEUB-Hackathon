@@ -61,6 +61,6 @@ router.get('/user', authenticateToken, controller.getUser);
  *       404:
  *         description: Citizen not found
  */
-router.post('/ocr/vaccine-card', authenticateToken, authorizeRoles('vacc_centre', 'staff', 'authority'), controller.ocrVaccinationCard);
+router.post('/ocr/vaccine-card', controller.ocrVaccinationCard);
 
 module.exports = router;

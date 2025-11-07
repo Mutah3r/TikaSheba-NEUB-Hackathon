@@ -69,15 +69,20 @@ module.exports = { getUser };
 // OCR vaccine card using Gemini and update citizen vaccine_taken
 async function ocrVaccinationCard(req, res) {
   try {
+    console.log("api came")
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ success: false, message: 'Gemini API key not configured' });
     }
 
+    console.log("OCR API initiate")
+
     const { image_base64, mimeType } = req.body || {};
     if (!image_base64 || typeof image_base64 !== 'string' || image_base64.length < 50) {
       return res.status(400).json({ success: false, message: 'image_base64 is required and must be base64-encoded image data' });
     }
+
+    console.log("Image ok")
 
     const vaccines = await Vaccine.find({});
     const vaccineMapByName = new Map();
@@ -85,6 +90,8 @@ async function ocrVaccinationCard(req, res) {
       vaccineMapByName.set(String(v.name).toLowerCase(), String(v._id));
       return { id: String(v._id), name: v.name };
     });
+
+    console.log("Vaccine ok")
 
     // Build prompt instructing strict JSON output with support for multiple vaccines
     const prompt = [
@@ -133,6 +140,8 @@ async function ocrVaccinationCard(req, res) {
       return res.status(400).json({ success: false, message: 'Failed to parse OCR output as JSON', raw: text });
     }
 
+    console.log("JSON ok, parsed:", parsed)
+
     // If model returned explicit failure
     if (parsed && parsed.success === false) {
       return res.status(200).json(parsed);
@@ -142,6 +151,8 @@ async function ocrVaccinationCard(req, res) {
     if (!reg_no) {
       return res.status(200).json({ success: false, message: 'reg_no not recognized' });
     }
+
+    console.log("reg no found")
 
     const name = parsed?.name ? String(parsed.name).trim() : undefined;
 
@@ -187,13 +198,16 @@ async function ocrVaccinationCard(req, res) {
     }
 
     // Update citizen record
-    const citizen = await Citizen.findOne({ reg_no });
+    let citizen = await Citizen.findOne({ reg_no });
+    let created = false;
     if (!citizen) {
-      return res.status(404).json({ success: false, message: 'Citizen not found for reg_no', data: { reg_no } });
+      // Create a new citizen when reg_no is not found
+      citizen = new Citizen({ reg_no });
+      created = true;
     }
 
-    // Optionally update name if provided and different
-    if (name && !citizen.name) {
+    // Optionally set/update name if provided
+    if (name && (!citizen.name || created)) {
       citizen.name = name;
     }
 
@@ -209,12 +223,15 @@ async function ocrVaccinationCard(req, res) {
     }
     await citizen.save();
 
+    console.log("citizen saved")
+
     return res.json({
       success: true,
-      message: 'OCR parsed and citizen updated',
+      message: created ? 'Citizen created and OCR data applied' : 'OCR parsed and citizen updated',
       data: {
         reg_no,
         name: name || citizen.name,
+        created,
         updated_count: validEntries.length,
         ignored_count: invalidEntries.length,
         inserted: validEntries.map((v) => ({ vaccine_id: v.vaccine_id, vaccine_name: v.vaccine_name, time: v.time_stamp.toISOString() })),
