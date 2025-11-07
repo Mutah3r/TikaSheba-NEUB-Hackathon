@@ -3,6 +3,7 @@ const Authority = require('../models/authority');
 const { sendEmail } = require('../utils/email');
 const Notification = require('../models/notification');
 const Vacc_centre = require('../models/vacc_centre');
+const Vaccine = require('../models/vaccine');
 
 // Authority: add or create centre vaccine (centre_id, vaccine_id, vaccine_name)
 async function addCentreVaccine(req, res) {
@@ -224,6 +225,38 @@ async function sendRequest(req, res) {
   }
 }
 
+// Vaccine centre: get all vaccines assigned to their centre
+async function getAssignedForCentre(req, res) {
+  try {
+    if (req.user.role !== 'vacc_centre') {
+      return res.status(403).json({ message: 'Forbidden: vacc_centre only' });
+    }
+    const centreId = req.user.vc_id;
+    if (!centreId) {
+      return res.status(400).json({ message: 'Missing centre id (vc_id) for user' });
+    }
+    // Fetch assigned records for this centre and derive unique vaccine names
+    const assigned = await CentreVaccine.find({ centre_id: centreId })
+      .select('vaccine_name')
+      .lean();
+    const names = Array.from(new Set((assigned || []).map((d) => d.vaccine_name).filter(Boolean)));
+
+    if (!names.length) {
+      return res.status(200).json([]);
+    }
+
+    // Fetch vaccine metadata by names and return only name and description
+    const vaccines = await Vaccine.find({ name: { $in: names } })
+      .select('name description _id')
+      .lean();
+    const result = (vaccines || []).map((v) => ({ id: v._id.toString(), name: v.name, description: v.description }));
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('getAssignedForCentre error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 module.exports = {
   addCentreVaccine,
   deleteCentreVaccine,
@@ -233,6 +266,7 @@ module.exports = {
   updateStock,
   getByRequestedStatus,
   sendRequest,
+  getAssignedForCentre,
 };
 
 // Public: Get all centres that currently have stock for a given vaccine_id

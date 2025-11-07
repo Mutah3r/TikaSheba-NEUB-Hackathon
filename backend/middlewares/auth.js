@@ -22,6 +22,7 @@ function authenticateToken(req, res, next) {
 function authorizeRoles(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
+      console.log(roles)
       return res.status(403).json({ message: 'Forbidden: insufficient role' });
     }
     next();
