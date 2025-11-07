@@ -83,8 +83,22 @@ export default function StaffLogScreen({ token }) {
             <Text style={styles.label}>Select Vaccine</Text>
             <View style={styles.selectRow}>
               {vaccines.map((v) => (
-                <TouchableOpacity key={v.centre_vaccine_id} style={[styles.selectItem, selectedId === v.centre_vaccine_id ? styles.selectItemActive : null]} onPress={() => setSelectedId(v.centre_vaccine_id)}>
-                  <Text style={styles.selectText}>{v.vaccine_name}</Text>
+                <TouchableOpacity
+                  key={v.centre_vaccine_id}
+                  style={[
+                    styles.selectItem,
+                    selectedId === v.centre_vaccine_id ? styles.selectItemActive : null,
+                  ]}
+                  onPress={() => setSelectedId(v.centre_vaccine_id)}
+                >
+                  <Text
+                    style={[
+                      styles.selectText,
+                      selectedId === v.centre_vaccine_id ? styles.selectTextActive : null,
+                    ]}
+                  >
+                    {v.vaccine_name}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -130,8 +144,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F7FF', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8,
     borderWidth: 1, borderColor: '#DCE7F5',
   },
-  selectItemActive: { backgroundColor: theme.secondary, borderColor: theme.secondary },
+  selectItemActive: { backgroundColor: theme.primary, borderColor: theme.primary },
   selectText: { color: theme.text, fontWeight: '700' },
+  selectTextActive: { color: '#fff' },
   primaryBtn: {
     backgroundColor: theme.primary,
     paddingVertical: 14,

@@ -57,6 +57,7 @@ app.use('/api/appointment', require('./routes/appointment'));
 app.use('/api/centre_vaccine', require('./routes/centre_vaccine'));
 app.use('/api/notification', require('./routes/notification'));
 app.use('/api/capacity', require('./routes/capacity'));
+app.use('/api/graph', require('./routes/graph'));
 
 
 

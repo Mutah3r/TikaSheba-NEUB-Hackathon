@@ -23,6 +23,7 @@ import {
 import { getCurrentUser } from "../../services/userService";
 import { getCentreOverview } from "../../services/vaccineService";
 import { listAssignedCentreVaccines } from "../../services/centreVaccineService";
+import { getWeeklyServed } from "../../services/graphService";
 
 const CentreDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,9 @@ const CentreDashboard = () => {
   const [vaccines, setVaccines] = useState([]);
   const [vaccinesLoading, setVaccinesLoading] = useState(true);
   const [vaccinesError, setVaccinesError] = useState("");
+  const [weeklyServed, setWeeklyServed] = useState(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [weeklyError, setWeeklyError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -44,9 +48,10 @@ const CentreDashboard = () => {
         const user = await getCurrentUser();
         const vcId = user?.vc_id;
         if (!vcId) throw new Error("Missing centre ID for current user");
-        const [overviewRes, assignedRes] = await Promise.allSettled([
+        const [overviewRes, assignedRes, weeklyRes] = await Promise.allSettled([
           getCentreOverview(vcId),
           listAssignedCentreVaccines(),
+          getWeeklyServed(),
         ]);
         if (!mounted) return;
         if (overviewRes.status === "fulfilled") {
@@ -67,6 +72,11 @@ const CentreDashboard = () => {
         } else {
           setVaccinesError(assignedRes.reason?.message || "Failed to load assigned vaccines");
         }
+        if (weeklyRes.status === "fulfilled") {
+          setWeeklyServed(weeklyRes.value || null);
+        } else {
+          setWeeklyError(weeklyRes.reason?.message || "Failed to load weekly served counts");
+        }
       } catch (err) {
         if (!mounted) return;
         setError(err?.message || "Failed to load centre overview");
@@ -74,6 +84,7 @@ const CentreDashboard = () => {
         if (mounted) {
           setLoading(false);
           setVaccinesLoading(false);
+          setWeeklyLoading(false);
         }
       }
     }
@@ -84,16 +95,11 @@ const CentreDashboard = () => {
   }, []);
 
   const [selected, setSelected] = useState(null);
-  const chartData = useMemo(
-    () => [
-      { name: "COVID-19 Booster", weeklyCount: 112 },
-      { name: "Hepatitis B", weeklyCount: 76 },
-      { name: "Influenza Seasonal", weeklyCount: 54 },
-      { name: "Tetanus", weeklyCount: 31 },
-      { name: "BCG", weeklyCount: 22 },
-    ],
-    []
-  );
+  const chartData = useMemo(() => {
+    const days = Array.isArray(weeklyServed?.days) ? weeklyServed.days : [];
+    if (!days.length) return [];
+    return days.map((d) => ({ name: d.date, weeklyCount: d.served }));
+  }, [weeklyServed]);
   const totalServed = lastWeek?.total_people_served ?? 0;
   const totalDosage = lastWeek?.vaccine_dosages ?? totalServed;
   const weeklyWaste = lastWeek?.wasted_vaccines ?? Math.round((totalServed || 100) * 0.04);
@@ -260,52 +266,58 @@ const CentreDashboard = () => {
               <span className="text-xs text-[#0c2b40]/70">Last 7 days</span>
             </div>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 12, right: 12, left: 12, bottom: 12 }}
-                >
-                  <CartesianGrid
-                    stroke="#081F2E"
-                    strokeOpacity={0.1}
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: "#081F2E", fontSize: 12 }}
-                    axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
-                    tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
-                  />
-                  <YAxis
-                    tick={{ fill: "#081F2E", fontSize: 12 }}
-                    axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
-                    tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "#081F2E", fillOpacity: 0.04 }}
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid rgba(8,31,46,0.15)",
-                      borderRadius: 12,
-                    }}
-                    labelStyle={{ color: "#081F2E" }}
-                    itemStyle={{ color: "#081F2E" }}
-                  />
-                  <Bar
-                    dataKey="weeklyCount"
-                    fill="#2FC94E"
-                    stroke="#2FC94E"
-                    isAnimationActive
-                    animationDuration={700}
+              {weeklyLoading ? (
+                <div className="h-full w-full rounded-xl bg-[#081F2E]/5 animate-pulse" />
+              ) : weeklyError ? (
+                <div className="text-sm text-[#F04E36]">{weeklyError}</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 12, right: 12, left: 12, bottom: 12 }}
                   >
-                    <LabelList
-                      dataKey="weeklyCount"
-                      position="top"
-                      style={{ fill: "#081F2E", fontSize: 11 }}
+                    <CartesianGrid
+                      stroke="#081F2E"
+                      strokeOpacity={0.1}
+                      vertical={false}
                     />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: "#081F2E", fontSize: 12 }}
+                      axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                      tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                    />
+                    <YAxis
+                      tick={{ fill: "#081F2E", fontSize: 12 }}
+                      axisLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                      tickLine={{ stroke: "#081F2E", strokeOpacity: 0.2 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "#081F2E", fillOpacity: 0.04 }}
+                      contentStyle={{
+                        backgroundColor: "#fff",
+                        border: "1px solid rgba(8,31,46,0.15)",
+                        borderRadius: 12,
+                      }}
+                      labelStyle={{ color: "#081F2E" }}
+                      itemStyle={{ color: "#081F2E" }}
+                    />
+                    <Bar
+                      dataKey="weeklyCount"
+                      fill="#2FC94E"
+                      stroke="#2FC94E"
+                      isAnimationActive
+                      animationDuration={700}
+                    >
+                      <LabelList
+                        dataKey="weeklyCount"
+                        position="top"
+                        style={{ fill: "#081F2E", fontSize: 11 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </motion.section>

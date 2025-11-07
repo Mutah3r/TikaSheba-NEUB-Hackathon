@@ -136,7 +136,8 @@ async function getAvailableDatesNext30(req, res) {
       return res.status(200).json([]);
     }
     const { start, end } = getDateRangeNext30();
-    const items = await Appointment.find({ center_id: centre_id, status: 'scheduled', date: { $gte: start, $lte: end } }).lean();
+    const items = await Appointment.find({ center_id: centre_id, date: { $gte: start, $lte: end } }).lean();
+    console.log(items)
     const counts = new Map();
     for (const appt of items) {
       const d = new Date(appt.date);

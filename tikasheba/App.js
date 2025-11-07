@@ -39,6 +39,12 @@ export default function App() {
     if (token && user) setScreen('home');
   }, [token, user]);
 
+  function handleLogout() {
+    setToken(null);
+    setUser(null);
+    setScreen('login');
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -46,7 +52,7 @@ export default function App() {
         <LoginScreen onSuccess={(t, u) => { setToken(t); setUser(u); }} />
       )}
       {screen !== 'login' && (
-        <Header onBack={screen !== 'home' ? () => setScreen('home') : null} />
+        <Header onBack={screen !== 'home' ? () => setScreen('home') : null} onLogout={handleLogout} />
       )}
       {screen === 'home' && (
         <HomeScreen

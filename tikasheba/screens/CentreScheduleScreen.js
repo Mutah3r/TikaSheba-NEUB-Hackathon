@@ -33,7 +33,7 @@ export default function CentreScheduleScreen({ token, user }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-        <Text style={styles.title}>Centre Schedule (Next 30 Days)</Text>
+        <Text style={styles.title}>Scheduled (Next 30 Days)</Text>
         {loading && (
           <View style={styles.card}><ActivityIndicator color={theme.primary} /><Text style={styles.muted}>Loading...</Text></View>
         )}
@@ -45,13 +45,13 @@ export default function CentreScheduleScreen({ token, user }) {
             {days.length === 0 ? (
               <View style={styles.card}><Text style={styles.muted}>No schedule entries.</Text></View>
             ) : (
-              days.map((d) => (
-                <View key={d.date || Math.random()} style={styles.dayCard}>
+              days.map((d, idx) => (
+                <View key={d.date || idx} style={styles.dayCard}>
                   <Text style={styles.dayTitle}>{d.date ? new Date(d.date).toDateString() : 'Date'}</Text>
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                    <View style={styles.badge}><Text style={styles.badgeText}>Capacity: {d.capacity ?? '-'}</Text></View>
-                    <View style={[styles.badge, { backgroundColor: '#EAF6FF' }]}><Text style={[styles.badgeText, { color: '#0077CC' }]}>Booked: {d.booked ?? '-'}</Text></View>
-                    <View style={[styles.badge, { backgroundColor: '#E8F6EE' }]}><Text style={[styles.badgeText, { color: '#2AAA5C' }]}>Available: {d.available ?? '-'}</Text></View>
+                    <View style={[styles.badge, { backgroundColor: '#EAF6FF' }]}>
+                      <Text style={[styles.badgeText, { color: '#0077CC' }]}>Scheduled: {typeof d.scheduled_count === 'number' ? d.scheduled_count : '-'}</Text>
+                    </View>
                   </View>
                 </View>
               ))
