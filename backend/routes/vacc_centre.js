@@ -144,4 +144,35 @@ router.post('/staff', authenticateToken, authorizeRoles('vacc_centre'), controll
  */
 router.put('/:id', authenticateToken, authorizeRoles('authority', 'vacc_centre'), controller.updateCentre);
 
+/**
+ * @swagger
+ * /api/vacc_centre:
+ *   get:
+ *     summary: Get all vaccination centres (authority only)
+ *     tags: [VaccCentre]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of centres
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string }
+ *                   vc_id: { type: string }
+ *                   name: { type: string }
+ *                   location: { type: string }
+ *                   district: { type: string }
+ *                   lattitude: { type: number }
+ *                   longitude: { type: number }
+ *                   staff_count: { type: number }
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/', authenticateToken, authorizeRoles('authority'), controller.listCentres);
+
 module.exports = router;

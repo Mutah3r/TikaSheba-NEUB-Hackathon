@@ -143,3 +143,28 @@ async function updateCentre(req, res) {
 }
 
 module.exports.updateCentre = updateCentre;
+
+// Authority: list all vaccination centres
+async function listCentres(req, res) {
+  try {
+    if (req.user?.role !== 'authority') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const centres = await VaccCentre.find({});
+    const data = centres.map((c) => ({
+      id: c._id,
+      vc_id: c.vc_id,
+      name: c.name,
+      location: c.location,
+      district: c.district,
+      lattitude: c.lattitude,
+      longitude: c.longitude,
+      staff_count: Array.isArray(c.staffs) ? c.staffs.length : 0,
+    }));
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to list centres' });
+  }
+}
+
+module.exports.listCentres = listCentres;
