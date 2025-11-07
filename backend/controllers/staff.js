@@ -107,13 +107,31 @@ async function createLog(req, res) {
     }
     const du = Number(dose_used) || 0;
     const dw = Number(dose_wasted) || 0;
-    const doc = await Staff.findOne({ staff_id: req.user.staff_id, centre_id: req.user.vc_id });
-    if (!doc) {
-      return res.status(404).json({ message: 'Staff record not found' });
+    // Validate centre vaccine exists and belongs to this centre
+    const cv = await CentreVaccine.findById(centre_vaccine_id).lean();
+    if (!cv) {
+      return res.status(404).json({ message: 'centre_vaccine_id not found' });
     }
-    const item = doc.vaccine_list.find(v => v.centre_vaccine_id === centre_vaccine_id);
+    if (cv.centre_id !== req.user.vc_id) {
+      return res.status(403).json({ message: 'Forbidden: vaccine belongs to a different centre' });
+    }
+
+    // Ensure staff belongs to this centre (via VaccCentre.staffs list)
+    const centre = await VaccCentre.findOne({ vc_id: req.user.vc_id }).lean();
+    const isStaffOfCentre = !!centre && Array.isArray(centre.staffs) && centre.staffs.some(s => s.id === req.user.staff_id);
+    if (!isStaffOfCentre) {
+      return res.status(403).json({ message: 'Forbidden: staff not part of this centre' });
+    }
+
+    // Upsert staff doc and vaccine assignment if missing
+    let doc = await Staff.findOne({ staff_id: req.user.staff_id, centre_id: req.user.vc_id });
+    if (!doc) {
+      doc = await Staff.create({ staff_id: req.user.staff_id, centre_id: req.user.vc_id, vaccine_list: [] });
+    }
+    let item = doc.vaccine_list.find(v => v.centre_vaccine_id === centre_vaccine_id);
     if (!item) {
-      return res.status(403).json({ message: 'This vaccine is not assigned to the staff' });
+      item = { centre_vaccine_id: centre_vaccine_id, vaccine_name: cv.vaccine_name, log: [] };
+      doc.vaccine_list.push(item);
     }
     item.log.push({ date: new Date(date), dose_used: du, dose_wasted: dw });
     await doc.save();
