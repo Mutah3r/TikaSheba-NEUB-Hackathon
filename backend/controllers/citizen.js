@@ -130,3 +130,117 @@ async function loginVerify(req, res) {
 }
 
 module.exports = { register, verify, loginRequest, loginVerify };
+
+// NEW FEATURES BELOW
+
+async function updateInfo(req, res) {
+  try {
+    const user = req.user;
+    if (!user || user.role !== 'citizen') {
+      return res.status(403).json({ message: 'Forbidden: citizen only' });
+    }
+    const { name, gender, phone_number } = req.body;
+    if (!name && !gender && !phone_number) {
+      return res.status(400).json({ message: 'No fields provided to update' });
+    }
+    const citizen = await Citizen.findById(user.sub);
+    if (!citizen) {
+      return res.status(404).json({ message: 'Citizen not found' });
+    }
+    if (name) citizen.name = name;
+    if (gender) citizen.gender = gender;
+    if (phone_number) citizen.phone_number = phone_number;
+    await citizen.save();
+    return res.json({ message: 'Profile updated', citizen: { id: citizen._id.toString(), name: citizen.name, gender: citizen.gender, phone_number: citizen.phone_number } });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to update profile' });
+  }
+}
+
+function parseCitizenIdFromQr(text) {
+  if (!text || typeof text !== 'string') return null;
+  // Try JSON payload
+  try {
+    const obj = JSON.parse(text);
+    if (obj && (obj.citizen_id || obj.id || obj.sub)) {
+      return obj.citizen_id || obj.id || obj.sub;
+    }
+  } catch (_) {}
+  // Try simple schemes
+  const m1 = text.match(/^citizen:(.+)$/i);
+  if (m1) return m1[1];
+  const m2 = text.match(/citizen_id=([A-Za-z0-9]+)/i);
+  if (m2) return m2[1];
+  return null;
+}
+
+async function scanQrAndSendOtp(req, res) {
+  try {
+    const { qr_text, citizen_id } = req.body;
+    const id = citizen_id || parseCitizenIdFromQr(qr_text);
+    if (!id) {
+      return res.status(400).json({ message: 'citizen_id or qr_text required' });
+    }
+    const citizen = await Citizen.findById(id);
+    if (!citizen) {
+      return res.status(404).json({ message: 'Citizen not found' });
+    }
+    const message = 'Your vaccine taken data are scanned from a device';
+    return res.json({
+      message,
+      citizen: { id: citizen._id.toString(), name: citizen.name },
+      vaccine_taken: citizen.vaccine_taken || [],
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to process QR scan' });
+  }
+}
+
+async function getVaccineHistoryFormatted(req, res) {
+  try {
+    const requester = req.user;
+    if (!requester || !['citizen', 'staff'].includes(requester.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'citizen id required' });
+    }
+    if (requester.role === 'citizen' && requester.sub !== id) {
+      return res.status(403).json({ message: 'Access denied to other citizen data' });
+    }
+    const citizen = await Citizen.findById(id);
+    if (!citizen) {
+      return res.status(404).json({ message: 'Citizen not found' });
+    }
+    const summaryMap = new Map();
+    for (const entry of (citizen.vaccine_taken || [])) {
+      const key = entry.vaccine_id || entry.vaccine_name;
+      if (!summaryMap.has(key)) {
+        summaryMap.set(key, {
+          vaccine_name: entry.vaccine_name,
+          dose_count: 0,
+          last_date: null,
+        });
+      }
+      const agg = summaryMap.get(key);
+      agg.dose_count += 1;
+      const ts = entry.time_stamp ? new Date(entry.time_stamp) : null;
+      if (!agg.last_date || (ts && ts > agg.last_date)) {
+        agg.last_date = ts;
+      }
+    }
+    const summary = Array.from(summaryMap.values()).map(s => ({
+      vaccine_name: s.vaccine_name,
+      dose_count: s.dose_count,
+      last_date: s.last_date,
+    }));
+    return res.json({ citizen: { id: citizen._id.toString(), name: citizen.name }, summary });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to get vaccine history' });
+  }
+}
+
+module.exports.updateInfo = updateInfo;
+module.exports.scanQrAndSendOtp = scanQrAndSendOtp;
+module.exports.getVaccineHistoryFormatted = getVaccineHistoryFormatted;

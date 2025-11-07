@@ -64,11 +64,8 @@ module.exports = Citizen;
 //citizen:
 // update citizen info api (basic info, like name, gender, phone number)
 
-//staff
-// add vaccine taken, post api (vaccine_taken : [vaccine_id, name, time_stamp])
-
 //anyone:
 //qr scan- get vaccine list of citizen and send otp to this phone
 
 //citizen:staff:
-// get vaccine taken, (format it to vaccine_name, dose_count (vaccine_taken for this vaccine_id), last_date)
+// get vaccine taken, (format it to vaccine_name, dose_count (vaccine_taken for this vaccine_id), last_date of taken vaccine)

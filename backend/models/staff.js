@@ -47,14 +47,16 @@ module.exports = staff;
 
 
 // vaccine center:
-// add stuff or create stuff
-// update stuff vaccine list (RBAC) (body : center vaccine id list)
+// assign vaccines on staff
+// update stuff vaccine list (RBAC) (body : centre vaccine id list)
 
 
 
 // stuff:
 // get stuff vaccine list 
 // create stuff vaccine log (given center vaccine id, date, dosed_used, wasted)
-// get stuff efficiency (given stuff id) (return for each center vaccine that this stuff gives (total dosed given by this stuff, total dosed wasted by this stuff), total people serve by this employee (get people from vaccine_log modal))
+
+//staff: centre:
+// get stuff efficiency (given stuff id) (return for each centre vaccine that this stuff gives (total dosed given by this stuff, total dosed wasted by this stuff), total people serve by this staff (get people from vaccine_log modal))
 
 

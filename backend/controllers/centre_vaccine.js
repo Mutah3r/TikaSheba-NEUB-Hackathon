@@ -2,6 +2,7 @@ const CentreVaccine = require('../models/centre_vaccine');
 const Authority = require('../models/authority');
 const { sendEmail } = require('../utils/email');
 const Notification = require('../models/notification');
+const Vacc_centre = require('../models/vacc_centre');
 
 // Authority: add or create centre vaccine (centre_id, vaccine_id, vaccine_name)
 async function addCentreVaccine(req, res) {
@@ -233,3 +234,50 @@ module.exports = {
   getByRequestedStatus,
   sendRequest,
 };
+
+// Public: Get all centres that currently have stock for a given vaccine_id
+async function getCentresWithStockByVaccine(req, res) {
+  try {
+    const { vaccine_id } = req.params;
+    if (!vaccine_id) {
+      return res.status(400).json({ message: 'vaccine_id is required' });
+    }
+    const entries = await CentreVaccine.find({ vaccine_id, current_stock: { $gt: 0 } }).lean();
+    if (!entries.length) {
+      return res.json([]);
+    }
+    const vcIds = [...new Set(entries.map(e => e.centre_id))];
+    const centres = await Vacc_centre.find({ vc_id: { $in: vcIds } }).lean();
+    const centreMap = new Map(centres.map(c => [c.vc_id, c]));
+    const result = entries.map(e => {
+      const c = centreMap.get(e.centre_id) || {};
+      return {
+        centre: {
+          id: c._id ? c._id.toString() : null,
+          vc_id: e.centre_id,
+          name: c.name || null,
+          location: c.location || null,
+          district: c.district || null,
+          lattitude: c.lattitude ?? null,
+          longitude: c.longitude ?? null,
+          staff_count: Array.isArray(c.staffs) ? c.staffs.length : 0,
+        },
+        stock: {
+          centre_vaccine_id: e._id.toString(),
+          vaccine_id: e.vaccine_id,
+          vaccine_name: e.vaccine_name,
+          current_stock: e.current_stock,
+          total_people: e.total_people || 0,
+          total_dosed: e.total_dosed || 0,
+          total_wasted: e.total_wasted || 0,
+        },
+      };
+    });
+    return res.json(result);
+  } catch (err) {
+    console.error('getCentresWithStockByVaccine error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+module.exports.getCentresWithStockByVaccine = getCentresWithStockByVaccine;

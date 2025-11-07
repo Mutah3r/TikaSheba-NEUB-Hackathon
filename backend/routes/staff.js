@@ -1,5 +1,6 @@
 const express = require('express');
 const controller = require('../controllers/staff');
+const { authenticateToken, authorizeRoles } = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -36,5 +37,116 @@ const router = express.Router();
  */
 // Staff login using vacc centre id and staff id
 router.post('/login', controller.login);
+
+/**
+ * @swagger
+ * /api/staff/{staff_id}/vaccines:
+ *   put:
+ *     summary: Assign or update staff vaccine list (centre only)
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staff_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [centre_vaccine_ids]
+ *             properties:
+ *               centre_vaccine_ids:
+ *                 type: array
+ *                 items: { type: string }
+ *     responses:
+ *       200:
+ *         description: Staff vaccine list updated
+ *       400:
+ *         description: Bad request
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Not found
+ */
+router.put('/:staff_id/vaccines', authenticateToken, authorizeRoles('vacc_centre'), controller.assignVaccines);
+
+/**
+ * @swagger
+ * /api/staff/me/vaccines:
+ *   get:
+ *     summary: Get own assigned vaccines (staff)
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vaccine list
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/me/vaccines', authenticateToken, authorizeRoles('staff'), controller.getMyVaccineList);
+
+/**
+ * @swagger
+ * /api/staff/log:
+ *   post:
+ *     summary: Create staff vaccine log (staff)
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [centre_vaccine_id, date]
+ *             properties:
+ *               centre_vaccine_id: { type: string }
+ *               date: { type: string, format: date-time }
+ *               dose_used: { type: number }
+ *               dose_wasted: { type: number }
+ *     responses:
+ *       201:
+ *         description: Log created
+ *       400:
+ *         description: Bad request
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Not found
+ */
+router.post('/log', authenticateToken, authorizeRoles('staff'), controller.createLog);
+
+/**
+ * @swagger
+ * /api/staff/{staff_id}/efficiency:
+ *   get:
+ *     summary: Get staff efficiency (centre only)
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staff_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Efficiency summary with per-vaccine totals and people served
+ *       400:
+ *         description: Bad request
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Not found
+ */
+router.get('/:staff_id/efficiency', authenticateToken, authorizeRoles('vacc_centre'), controller.getEfficiency);
 
 module.exports = router;

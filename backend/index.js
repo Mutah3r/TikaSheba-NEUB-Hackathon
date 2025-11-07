@@ -55,6 +55,8 @@ app.use('/api/vaccine', require('./routes/vaccine'));
 app.use('/api/global', require('./routes/overall'));
 app.use('/api/appointment', require('./routes/appointment'));
 app.use('/api/centre_vaccine', require('./routes/centre_vaccine'));
+app.use('/api/notification', require('./routes/notification'));
+
 
 
 app.listen(8000, () => {

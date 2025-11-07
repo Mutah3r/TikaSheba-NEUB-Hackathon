@@ -242,4 +242,50 @@ router.get('/requests/:status', authenticateToken, authorizeRoles('vacc_centre')
  */
 router.put('/:id/request', authenticateToken, authorizeRoles('vacc_centre'), controller.sendRequest);
 
+/**
+ * @swagger
+ * /api/centre_vaccine/available/{vaccine_id}:
+ *   get:
+ *     summary: Get all centres with current stock for a vaccine (public)
+ *     tags: [Centre Vaccine]
+ *     parameters:
+ *       - in: path
+ *         name: vaccine_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of centres with stock and their details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   centre:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       vc_id: { type: string }
+ *                       name: { type: string }
+ *                       location: { type: string }
+ *                       district: { type: string }
+ *                       lattitude: { type: number }
+ *                       longitude: { type: number }
+ *                       staff_count: { type: number }
+ *                   stock:
+ *                     type: object
+ *                     properties:
+ *                       centre_vaccine_id: { type: string }
+ *                       vaccine_id: { type: string }
+ *                       vaccine_name: { type: string }
+ *                       current_stock: { type: number }
+ *                       total_people: { type: number }
+ *                       total_dosed: { type: number }
+ *                       total_wasted: { type: number }
+ */
+router.get('/available/:vaccine_id', controller.getCentresWithStockByVaccine);
+
 module.exports = router;

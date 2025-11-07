@@ -1,4 +1,5 @@
 const Appointment = require('../models/appointments');
+const Citizen = require('../models/citizen');
 
 function ensureCitizenAccess(req, res, citizenId) {
   const role = req.user?.role;
@@ -190,8 +191,29 @@ async function markDone(req, res) {
     if (vc_id && appt.center_id !== vc_id) {
       return res.status(403).json({ message: 'Forbidden: different centre' });
     }
+    const wasDone = appt.status === 'done';
     appt.status = 'done';
     await appt.save();
+
+    // Update citizen vaccine_taken if this is the first time marking done
+    if (!wasDone) {
+      try {
+        const citizen = await Citizen.findById(appt.citizen_id);
+        if (citizen) {
+          const entry = {
+            vaccine_id: appt.vaccine_id,
+            vaccine_name: appt.vaccine_name,
+            time_stamp: new Date(),
+          };
+          citizen.vaccine_taken = Array.isArray(citizen.vaccine_taken) ? citizen.vaccine_taken : [];
+          citizen.vaccine_taken.push(entry);
+          await citizen.save();
+        }
+      } catch (citErr) {
+        // Log and continue, do not fail the endpoint
+        console.error('Failed to update citizen vaccine_taken:', citErr);
+      }
+    }
     return res.status(200).json({ message: 'Appointment marked done', id: appointment_id });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to mark appointment done' });
