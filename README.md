@@ -197,3 +197,16 @@ The TikaSheba roadmap focuses on real-time capabilities, deeper integrations, an
 5.  **Enhanced UX/Accessibility** 🌐: Implement full multilingual UX localization and align design with WCAG accessibility standards.
 
 -----
+
+
+
+# Database Schema
+
+<img src="database.png">
+
+
+
+# Swagger:
+
+
+<img src="swagger_api_documentations.png">
