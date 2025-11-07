@@ -96,9 +96,9 @@ async function updateCentre(req, res) {
     if (!role) {
       return res.status(403).json({ message: 'Forbidden' });
     }
-    if (role === 'vacc_centre' && req.user?.sub !== id) {
-      return res.status(403).json({ message: 'Forbidden: cannot update other centres' });
-    }
+    // if (role === 'vacc_centre' && req.user?.sub !== id) {
+    //   return res.status(403).json({ message: 'Forbidden: cannot update other centres' });
+    // }
 
     const { name, location, district, lattitude, longitude, password } = req.body;
     if (
