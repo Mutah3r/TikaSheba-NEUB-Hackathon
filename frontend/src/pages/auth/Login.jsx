@@ -40,6 +40,20 @@ const Login = () => {
   const [toast, setToast] = useState({ show: false, message: "" });
   const [credentialSubmitting, setCredentialSubmitting] = useState(false);
 
+  // If already logged in, redirect to the appropriate dashboard
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    if (!token) return;
+    const role = localStorage.getItem("role") || "citizen";
+    if (role === "authority") {
+      navigate("/dashboard/authority", { replace: true });
+    } else if (role === "vacc_centre" || role === "vcc_centre" || role === "centre") {
+      navigate("/dashboard/centre", { replace: true });
+    } else {
+      navigate("/dashboard/citizen", { replace: true });
+    }
+  }, [navigate]);
+
   const tabIndex = useMemo(
     () => TABS.findIndex((t) => t.key === activeTab),
     [activeTab]

@@ -1,9 +1,25 @@
 import { motion } from "framer-motion";
-import { Link, Outlet } from "react-router";
+import { useEffect } from "react";
+import { Link, Outlet, useNavigate } from "react-router";
 import transparentLogo from "../assets/logo-text.png";
 import logo from "../assets/logo.png";
 
 const AuthLayout = () => {
+  const navigate = useNavigate();
+
+  // If user is already authenticated, redirect away from /auth and its children
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    if (!token) return;
+    const role = localStorage.getItem("role") || "citizen";
+    if (role === "authority") {
+      navigate("/dashboard/authority", { replace: true });
+    } else if (role === "vacc_centre" || role === "vcc_centre" || role === "centre") {
+      navigate("/dashboard/centre", { replace: true });
+    } else {
+      navigate("/dashboard/citizen", { replace: true });
+    }
+  }, [navigate]);
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#fff7f5] via-[#fffaf0] to-[#fffef7] text-[#081F2E]">
       <header className="w-full">
