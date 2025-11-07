@@ -204,6 +204,82 @@ router.get('/centre/:centre_id/status/:status/time/:time', authenticateToken, au
 
 /**
  * @swagger
+ * /api/appointment/centre/{centre_id}/status/scheduled/date/today:
+ *   get:
+ *     summary: Get today's scheduled appointments by centre id (centre/authority)
+ *     tags: [Appointment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: centre_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of today's scheduled appointments
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/centre/:centre_id/status/scheduled/date/today', authenticateToken, authorizeRoles('vacc_centre', 'authority', 'staff'), controller.getTodaysScheduledByCentre);
+
+/**
+ * @swagger
+ * /api/appointment/centre/{centre_id}/scheduled/next-14-days:
+ *   get:
+ *     summary: Get scheduled appointment counts per day for the next 14 days
+ *     tags: [Appointment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: centre_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Daily counts for the next 14 days
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/centre/:centre_id/scheduled/next-14-days', authenticateToken, authorizeRoles('vacc_centre', 'authority', 'staff'), controller.getScheduledCountsByCentreDateRange);
+
+/**
+ * @swagger
+ * /api/appointment/centre/{centre_id}/status/scheduled/date-range:
+ *   get:
+ *     summary: Get scheduled appointment counts per day for a date range
+ *     tags: [Appointment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: centre_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: start
+ *         schema:
+ *           type: string
+ *           example: 2025-01-01
+ *       - in: query
+ *         name: end
+ *         schema:
+ *           type: string
+ *           example: 2025-01-14
+ *     responses:
+ *       200:
+ *         description: Daily counts across the range
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/centre/:centre_id/status/scheduled/date-range', authenticateToken, authorizeRoles('vacc_centre', 'authority', 'staff'), controller.getScheduledCountsByCentreDateRange);
+
+/**
+ * @swagger
  * /api/appointment/{id}/centre/status:
  *   put:
  *     summary: Update appointment status to scheduled or missed (centre/staff)

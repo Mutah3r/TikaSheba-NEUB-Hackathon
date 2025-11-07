@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiBell, FiCalendar, FiClipboard, FiUsers, FiX } from "react-icons/fi";
 import {
   Bar,
@@ -12,18 +12,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { getCurrentUser } from "../../../services/userService";
+import { getTodaysScheduledByCentre } from "../../../services/appointmentService";
 
 const PRIMARY = "#081F2E";
 const ACCENT = "#EAB308";
 const BAR_COLOR = "#2FC94E"; // matches centre dashboard weekly chart
 
-const SCHEDULED_PATIENTS = [
-  { id: "p1", name: "Rahim Uddin", vaccine: "COVID-19 Booster" },
-  { id: "p2", name: "Sara Noor", vaccine: "Hepatitis B" },
-  { id: "p3", name: "Imran Khan", vaccine: "Influenza Seasonal" },
-  { id: "p4", name: "Aisha Rahman", vaccine: "Tetanus" },
-  { id: "p5", name: "Jamal Hossain", vaccine: "BCG" },
-];
+// Replaced by todayPatients loaded from API
+const SCHEDULED_PATIENTS = [];
 
 const SAMPLE_NAMES = [
   "Rahim Uddin",
@@ -317,7 +314,42 @@ const CentreAppointments = () => {
   const [futureOpen, setFutureOpen] = useState(false);
   const [selectedFutureDate, setSelectedFutureDate] = useState(null);
   const [notifySent, setNotifySent] = useState(false);
-  const todaysCount = SCHEDULED_PATIENTS.length;
+  const [todayPatients, setTodayPatients] = useState([]);
+  const [todayLoading, setTodayLoading] = useState(true);
+  const [todayError, setTodayError] = useState("");
+  const todaysCount = todayPatients.length;
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadToday() {
+      try {
+        setTodayLoading(true);
+        setTodayError("");
+        const user = await getCurrentUser();
+        const vcId = user?.vc_id;
+        if (!vcId) throw new Error("Missing centre ID for current user");
+        const items = await getTodaysScheduledByCentre(vcId);
+        if (!mounted) return;
+        const normalized = Array.isArray(items)
+          ? items.map((a, idx) => ({
+              id: a._id || `appt-${idx}`,
+              name: a.citizen_id || "Unknown Citizen",
+              vaccine: a.vaccine_name || "Unknown Vaccine",
+            }))
+          : [];
+        setTodayPatients(normalized);
+      } catch (err) {
+        if (!mounted) return;
+        setTodayError(err?.message || "Failed to load today's scheduled patients");
+      } finally {
+        if (mounted) setTodayLoading(false);
+      }
+    }
+    loadToday();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const futureAppointments = useMemo(
     () => generateAppointmentsForDate(selectedFutureDate),
@@ -533,7 +565,16 @@ const CentreAppointments = () => {
         </div>
         <div className="space-y-3">
           <AnimatePresence initial={false}>
-            {SCHEDULED_PATIENTS.map((p, idx) => (
+            {todayLoading && (
+              <div className="text-xs text-[#0c2b40]/70">Loading...</div>
+            )}
+            {todayError && (
+              <div className="text-xs text-red-600">{todayError}</div>
+            )}
+            {!todayLoading && !todayError && todayPatients.length === 0 && (
+              <div className="text-xs text-[#0c2b40]/70">No scheduled patients for today.</div>
+            )}
+            {todayPatients.map((p, idx) => (
               <motion.div
                 key={p.id}
                 initial={{ opacity: 0, y: 8 }}

@@ -135,6 +135,91 @@ async function getAppointmentsByCentreStatusAndTime(req, res) {
   }
 }
 
+// Centre: get today's scheduled appointments by centre id
+async function getTodaysScheduledByCentre(req, res) {
+  try {
+    const { centre_id } = req.params;
+    const role = req.user?.role;
+    if (!['vacc_centre', 'authority', 'staff'].includes(role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    if (role !== 'authority' && req.user?.vc_id !== centre_id) {
+      return res.status(403).json({ message: 'Forbidden: cannot access other centres' });
+    }
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const items = await Appointment.find({
+      center_id: centre_id,
+      status: 'scheduled',
+      date: { $gte: start, $lte: end },
+    });
+    return res.status(200).json(items);
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to get today\'s scheduled appointments' });
+  }
+}
+
+// Centre: get scheduled counts over a date range (default next 14 days)
+async function getScheduledCountsByCentreDateRange(req, res) {
+  try {
+    const { centre_id } = req.params;
+    const role = req.user?.role;
+    if (!['vacc_centre', 'authority', 'staff'].includes(role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    if (role !== 'authority' && req.user?.vc_id !== centre_id) {
+      return res.status(403).json({ message: 'Forbidden: cannot access other centres' });
+    }
+
+    const now = new Date();
+    let start = req.query.start ? new Date(req.query.start) : new Date(now);
+    let end = req.query.end ? new Date(req.query.end) : new Date(now.getFullYear(), now.getMonth(), now.getDate() + 13);
+    // Normalize to whole-day bounds
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const items = await Appointment.find({
+      center_id: centre_id,
+      status: 'scheduled',
+      date: { $gte: start, $lte: end },
+    }).select('date');
+
+    // Build a map of YYYY-MM-DD => count
+    const toKey = (d) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const counts = new Map();
+    for (const it of items) {
+      const d = new Date(it.date);
+      const key = toKey(d);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+
+    // Generate continuous days from start to end
+    const days = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      const key = toKey(cur);
+      days.push({ date: key, scheduled: counts.get(key) || 0 });
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    return res.status(200).json({
+      start: toKey(start),
+      end: toKey(end),
+      days,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to get scheduled counts for date range' });
+  }
+}
+
 // Centre: update status to scheduled or missed
 async function centreUpdateStatus(req, res) {
   try {
@@ -228,6 +313,8 @@ module.exports = {
   getAppointmentsByCentre,
   getAppointmentsByCentreAndStatus,
   getAppointmentsByCentreStatusAndTime,
+  getTodaysScheduledByCentre,
+  getScheduledCountsByCentreDateRange,
   centreUpdateStatus,
   markDone,
 };
