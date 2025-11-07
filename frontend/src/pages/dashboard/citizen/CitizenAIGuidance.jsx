@@ -17,7 +17,7 @@ const CitizenAIGuidance = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const mockAIResponse = (prompt) => {
+  const mockAIResponse = () => {
     const p = prompt.toLowerCase();
     if (p.includes("side effect")) {
       return (
@@ -68,6 +68,67 @@ const CitizenAIGuidance = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Lightweight markdown rendering: bold (**text**) and bullet lists (* or -)
+  const renderInlineMarkdown = (text) => {
+    const parts = [];
+    const regex = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      parts.push(
+        <strong key={`b-${parts.length}`} className="font-semibold text-[#081F2E]">
+          {match[1]}
+        </strong>
+      );
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    return parts;
+  };
+
+  const renderMarkdown = (md) => {
+    const lines = String(md).split(/\r?\n/);
+    const nodes = [];
+    let list = [];
+    const flushList = () => {
+      if (list.length) {
+        nodes.push(
+          <ul key={`ul-${nodes.length}`} className="list-disc pl-5 mb-2 text-[#0c2b40]/80">
+            {list.map((item, idx) => (
+              <li key={`li-${idx}`}>{renderInlineMarkdown(item)}</li>
+            ))}
+          </ul>
+        );
+        list = [];
+      }
+    };
+    lines.forEach((line, i) => {
+      const bulletMatch = /^\s*[\*-]\s+(.*)$/.exec(line);
+      if (bulletMatch) {
+        list.push(bulletMatch[1]);
+      } else {
+        flushList();
+        const trimmed = line.trim();
+        if (trimmed.length) {
+          nodes.push(
+            <p key={`p-${i}`} className="mb-2 text-[#0c2b40]/80">
+              {renderInlineMarkdown(line)}
+            </p>
+          );
+        } else {
+          nodes.push(<div key={`br-${i}`} className="h-2" />);
+        }
+      }
+    });
+    flushList();
+    return nodes;
   };
 
   return (
@@ -143,8 +204,8 @@ const CitizenAIGuidance = () => {
                 </div>
                 AI Guidance
               </div>
-              <div className="text-sm text-[#0c2b40]/80 leading-relaxed whitespace-pre-line">
-                {response}
+              <div className="text-sm leading-relaxed">
+                {renderMarkdown(response)}
               </div>
             </motion.div>
           )}

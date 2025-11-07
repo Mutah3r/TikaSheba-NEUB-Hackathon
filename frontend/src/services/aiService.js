@@ -6,7 +6,7 @@ const ai = axios.create({
 });
 
 export async function askGuidance(prompt) {
-  const res = await ai.post("/chat", { prompt });
+  const res = await ai.post("/chat", { message: prompt });
   return res.data;
 }
 
