@@ -5,9 +5,9 @@ import { FiMessageSquare, FiSend, FiZap } from "react-icons/fi";
 const CitizenAIGuidance = () => {
   const SUGGESTIONS = [
     "I will take covid vaccine tomorrow, what side effects can I face?",
-    "What is the recommended schedule for BCG and MMR?",
+    "এক বছর বয়সের বাচ্চাদের জন্য কোন কোন টীকা গ্রহণ করা উচিত?",
     "Can I take influenza vaccine if I have a mild fever?",
-    "What should I avoid after receiving an HPV dose?",
+    "বাচ্চের টীকা দেওয়ার পর কী করব?",
     "Is it safe to mix different COVID-19 vaccines?",
   ];
 
