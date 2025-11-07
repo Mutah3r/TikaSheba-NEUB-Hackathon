@@ -1,7 +1,6 @@
-import { Navigate } from "react-router";
+import { Navigate, Outlet } from "react-router";
 import AuthorityDashboard from "../pages/dashboard/AuthorityDashboard";
 import CentreDashboard from "../pages/dashboard/CentreDashboard";
-import CitizenDashboard from "../pages/dashboard/CitizenDashboard";
 
 function roleMatches(required) {
   const role =
@@ -24,7 +23,8 @@ export function CitizenOnly() {
       />
     );
   }
-  return <CitizenDashboard />;
+  // Render nested citizen routes (dashboard home as index, plus tabs)
+  return <Outlet />;
 }
 
 export function CentreOnly() {

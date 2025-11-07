@@ -9,6 +9,12 @@ import RoleRedirect from "../pages/dashboard/RoleRedirect";
 import PrivateRoute from "./PrivateRoute";
 import Unauthorized from "../pages/errors/Unauthorized";
 import { CitizenOnly, CentreOnly, AuthorityOnly } from "./RoleGuards";
+import CitizenDashboard from "../pages/dashboard/CitizenDashboard";
+import CitizenSchedule from "../pages/dashboard/citizen/CitizenSchedule";
+import CitizenAppointments from "../pages/dashboard/citizen/CitizenAppointments";
+import CitizenLogs from "../pages/dashboard/citizen/CitizenLogs";
+import CitizenAIGuidance from "../pages/dashboard/citizen/CitizenAIGuidance";
+import CitizenSettings from "../pages/dashboard/citizen/CitizenSettings";
 
 const router = createBrowserRouter([
   {
@@ -32,7 +38,18 @@ const router = createBrowserRouter([
         Component: DashboardLayout,
         children: [
           { index: true, Component: RoleRedirect },
-          { path: "citizen", Component: CitizenOnly },
+          {
+            path: "citizen",
+            Component: CitizenOnly,
+            children: [
+              { index: true, Component: CitizenDashboard },
+              { path: "schedule", Component: CitizenSchedule },
+              { path: "appointments", Component: CitizenAppointments },
+              { path: "logs", Component: CitizenLogs },
+              { path: "ai", Component: CitizenAIGuidance },
+              { path: "settings", Component: CitizenSettings },
+            ],
+          },
           { path: "centre", Component: CentreOnly },
           { path: "authority", Component: AuthorityOnly },
           { path: "unauthorized", Component: Unauthorized },

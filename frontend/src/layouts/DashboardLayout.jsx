@@ -1,13 +1,17 @@
 import { useMemo, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import {
   FiHome,
-  FiMenu,
   FiLogOut,
   FiUser,
   FiChevronLeft,
   FiChevronRight,
+  FiCalendar,
+  FiClipboard,
+  FiActivity,
+  FiMessageSquare,
+  FiSettings,
 } from "react-icons/fi";
 
 const DashboardLayout = () => {
@@ -21,6 +25,27 @@ const DashboardLayout = () => {
   }, [location.pathname]);
 
   const basePath = `/dashboard/${roleSegment}`;
+
+  const navItems = useMemo(() => {
+    if (roleSegment === "citizen") {
+      return [
+        { to: basePath, label: "Home", icon: FiHome },
+        { to: `${basePath}/schedule`, label: "Schedule Vaccine", icon: FiCalendar },
+        { to: `${basePath}/appointments`, label: "My Appointments", icon: FiClipboard },
+        { to: `${basePath}/logs`, label: "Logs", icon: FiActivity },
+        { to: `${basePath}/ai`, label: "Get AI Guidance", icon: FiMessageSquare },
+      ];
+    }
+    if (roleSegment === "authority") {
+      return [
+        { to: basePath, label: "Home", icon: FiHome },
+      ];
+    }
+    // vacc_centre or other roles
+    return [
+      { to: basePath, label: "Home", icon: FiHome },
+    ];
+  }, [roleSegment, basePath]);
 
   const handleLogout = () => {
     localStorage.removeItem("auth_token");
@@ -69,28 +94,47 @@ const DashboardLayout = () => {
           className="h-full bg-white shadow-lg ring-1 ring-[#081F2E]/10 overflow-y-auto flex flex-col"
         >
           <nav className="p-3 space-y-1">
-            <Link
-              to={basePath}
-              className="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#081F2E] hover:bg-[#081F2E]/5"
-            >
-              <FiHome className="text-[#081F2E]/80" />
-              {!collapsed && <span>Home</span>}
-            </Link>
-            {/* Example extra links (non-functional for now) */}
-            <button
-              className="group w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#081F2E]/70 hover:bg-[#081F2E]/5"
-            >
-              <FiMenu />
-              {!collapsed && <span>Overview</span>}
-            </button>
-            <button
-              className="group w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#081F2E]/70 hover:bg-[#081F2E]/5"
-            >
-              <FiUser />
-              {!collapsed && <span>Profile</span>}
-            </button>
+            {navItems.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === basePath}
+                className={({ isActive }) =>
+                  `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ` +
+                  (isActive
+                    ? `text-[#081F2E] bg-gradient-to-r from-[#081F2E]/10 to-transparent ring-1 ring-[#081F2E]/10`
+                    : `text-[#081F2E] hover:bg-[#081F2E]/5`)
+                }
+              >
+                <Icon
+                  className={
+                    (to === basePath ? location.pathname === to : location.pathname.startsWith(to))
+                      ? "text-[#F04E36]"
+                      : "text-[#081F2E]/80"
+                  }
+                />
+                {!collapsed && <span>{label}</span>}
+              </NavLink>
+            ))}
           </nav>
           <div className="mt-auto p-3">
+            {/* Settings above Logout for citizen */}
+            {roleSegment === "citizen" && (
+              <NavLink
+                to={`${basePath}/settings`}
+                className={({ isActive }) =>
+                  `mb-2 w-full inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ` +
+                  (isActive
+                    ? `bg-[#081F2E]/10 text-[#081F2E] ring-1 ring-[#081F2E]/10`
+                    : `bg-white text-[#081F2E] ring-1 ring-[#081F2E]/10 hover:bg-[#081F2E]/5`)
+                }
+              >
+                <FiSettings
+                  className={location.pathname.startsWith(`${basePath}/settings`) ? "text-[#F04E36]" : "text-[#081F2E]/80"}
+                />
+                {!collapsed && <span>Settings</span>}
+              </NavLink>
+            )}
             <button
               onClick={handleLogout}
               className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#F04E36] text-white px-3 py-2 text-sm font-medium hover:bg-[#e3452f]"
