@@ -8,63 +8,9 @@ import {
   FiShield,
 } from "react-icons/fi";
 import { getCurrentUser } from "../../services/userService";
+import { getNotifications } from "../../services/notificationService";
 
-const NOTIFICATIONS = [
-  {
-    id: "n1",
-    title: "Stock Request Approved",
-    desc: "HepB 2,000 doses approved for Rajshahi.",
-    time: "2h ago",
-    status: "Approved",
-    accent: "#2FC94E",
-    unread: true,
-  },
-  {
-    id: "n2",
-    title: "High Wastage Alert",
-    desc: "Sylhet Hub reported 12% wastage yesterday.",
-    time: "5h ago",
-    status: "Alert",
-    accent: "#F04E36",
-    unread: true,
-  },
-  {
-    id: "n3",
-    title: "Cold Chain Maintenance Due",
-    desc: "Chittagong Urban Clinic sensor drift flagged.",
-    time: "Today",
-    status: "Due",
-    accent: "#EAB308",
-    unread: false,
-  },
-  {
-    id: "n4",
-    title: "Centre Online",
-    desc: "Dhaka Medical Centre restored connectivity.",
-    time: "1d ago",
-    status: "Info",
-    accent: "#081F2E",
-    unread: false,
-  },
-  {
-    id: "n5",
-    title: "Redistribution Suggested",
-    desc: "Move 1.5k HepB doses to Rajshahi to balance demand.",
-    time: "1d ago",
-    status: "Suggestion",
-    accent: "#2FC94E",
-    unread: false,
-  },
-  {
-    id: "n6",
-    title: "Redistribution Suggested",
-    desc: "Move 1.5k HepB doses to Rajshahi to balance demand.",
-    time: "1d ago",
-    status: "Suggestion",
-    accent: "#2FC94E",
-    unread: false,
-  },
-];
+const NOTIFICATIONS = [];
 
 const AuthorityDashboard = () => {
   const [user, setUser] = useState(null);
@@ -72,7 +18,7 @@ const AuthorityDashboard = () => {
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
   const unreadCount = notifications.filter((n) => n.unread).length;
   const centresOnline = 42;
-  const pendingRequests = 7;
+  const pendingRequests = notifications.filter((n) => (n.status === "Alert" || n.status === "Requested" || n.status === "Suggestion")).length;
 
   const markAsRead = (id) => {
     setNotifications((prev) =>
@@ -91,6 +37,29 @@ const AuthorityDashboard = () => {
         // silent fail
       } finally {
         if (mounted) setLoadingUser(false);
+      }
+    })();
+    (async () => {
+      try {
+        const items = await getNotifications();
+        const mapped = (Array.isArray(items) ? items : []).map((x) => {
+          const status = x.type === "stock_mismatch" ? "Alert" : "Info";
+          const accent = status === "Alert" ? "#F04E36" : "#081F2E";
+          const id = x.id || x._id || Math.random().toString(36).slice(2);
+          return {
+            id,
+            title: x.subject || x.type || "Notification",
+            desc: x.message || "",
+            time: x.created_at ? new Date(x.created_at).toLocaleString() : "",
+            status,
+            accent,
+            unread: true,
+            _raw: x,
+          };
+        });
+        if (mounted) setNotifications(mapped);
+      } catch (e) {
+        // keep empty notifications on error
       }
     })();
     return () => {
@@ -140,10 +109,10 @@ const AuthorityDashboard = () => {
                     <div className="rounded-xl ring-1 ring-[#081F2E]/10 bg-gradient-to-br from-[#F8FAFF] via-white to-[#EFF6FF] px-4 py-3 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2 text-[#081F2E]">
-                          {n.status === "Approved" ? (
-                            <FiCheckCircle className="text-[#2FC94E]" />
-                          ) : n.status === "Alert" ? (
+                          {n.status === "Alert" ? (
                             <FiAlertTriangle className="text-[#F04E36]" />
+                          ) : n.status === "Approved" ? (
+                            <FiCheckCircle className="text-[#2FC94E]" />
                           ) : (
                             <FiClipboard className="text-[#081F2E]" />
                           )}
@@ -172,6 +141,25 @@ const AuthorityDashboard = () => {
                       <p className="mt-1.5 text-sm text-[#0c2b40]/80">
                         {n.desc}
                       </p>
+                      {n._raw && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {n._raw.centre_id && (
+                            <span className="inline-flex items-center rounded-md bg-[#081F2E]/5 text-[#081F2E] text-[11px] px-2 py-1 ring-1 ring-[#081F2E]/15">
+                              Centre: {n._raw.centre_id}
+                            </span>
+                          )}
+                          {typeof n._raw.requested_stock_amount === 'number' && (
+                            <span className="inline-flex items-center rounded-md bg-[#FFF7E6] text-[#A05A00] text-[11px] px-2 py-1 ring-1 ring-[#EAB308]/25">
+                              Requested: {n._raw.requested_stock_amount}
+                            </span>
+                          )}
+                          {typeof n._raw.delivered_stock_amount === 'number' && (
+                            <span className="inline-flex items-center rounded-md bg-[#E9F9EE] text-[#1a8a35] text-[11px] px-2 py-1 ring-1 ring-[#2FC94E]/20">
+                              Delivered: {n._raw.delivered_stock_amount}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </motion.li>
                 ))}

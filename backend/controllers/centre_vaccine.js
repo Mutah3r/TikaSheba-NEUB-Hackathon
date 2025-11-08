@@ -207,8 +207,6 @@ async function updateStock(req, res) {
         const recipients = authorities.map(a => a.email).filter(Boolean);
         const subject = 'Stock mismatch notification';
         const message = `Centre ${doc.centre_id} updated stock with ${amt} for ${doc.vaccine_name} (requested ${doc.requested_stock_amount}).`;
-        // send emails to all authorities
-        await Promise.all(recipients.map(email => sendEmail({ to: email, subject, text: message })));
         // save notification
         await Notification.create({
           type: 'stock_mismatch',
@@ -228,6 +226,8 @@ async function updateStock(req, res) {
 
     doc.current_stock = newStock;
     await doc.save();
+    // send emails to all authorities
+    await Promise.all(recipients.map(email => sendEmail({ to: email, subject, text: message })));
     return res.status(200).json({ message: 'Stock updated', data: doc });
   } catch (err) {
     console.error('updateStock error:', err);

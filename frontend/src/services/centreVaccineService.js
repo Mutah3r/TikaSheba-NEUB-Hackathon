@@ -26,6 +26,16 @@ export function updateCentreVaccineStock(id, amount) {
   return api.put(`/centre_vaccine/${id}/stock`, { operation: "add", amount });
 }
 
+// Authority: list all requested centre vaccine stocks
+export function listRequestedCentreVaccines() {
+  return api.get(`/centre_vaccine/requested`);
+}
+
+// Authority: update requested status for a centre-vaccine record
+export function updateCentreVaccineStatus(id, status) {
+  return api.put(`/centre_vaccine/${id}/status`, { status });
+}
+
 export default {
   listAssignedCentreVaccines,
   listAssignedCentreVaccinesByCentre,
@@ -33,4 +43,6 @@ export default {
   getAvailableCentresByVaccine,
   requestCentreVaccineStock,
   updateCentreVaccineStock,
+  listRequestedCentreVaccines,
+  updateCentreVaccineStatus,
 };
