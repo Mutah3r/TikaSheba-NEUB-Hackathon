@@ -395,15 +395,26 @@ const CentreAppointments = () => {
             View Appointments
           </h2>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={openFutureModal}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#081F2E] text-white ring-1 ring-[#081F2E]/20 shadow-sm"
-        >
-          <FiCalendar />
-          <span className="text-sm">Future Appointments</span>
-        </motion.button>
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={openFutureModal}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#081F2E] text-white ring-1 ring-[#081F2E]/20 shadow-sm"
+          >
+            <FiCalendar />
+            <span className="text-sm">Future Appointments</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={openFutureModal}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EAB308] text-[#081F2E] ring-1 ring-[#EAB308]/30 shadow-sm"
+          >
+            <FiBell />
+            <span className="text-sm">Send Notification</span>
+          </motion.button>
+        </div>
       </div>
 
       {/* Future Appointments Modal */}
