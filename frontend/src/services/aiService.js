@@ -10,4 +10,35 @@ export async function askGuidance(prompt) {
   return res.data;
 }
 
-export default { askGuidance };
+export async function askCenterChat(message) {
+  const res = await ai.post("/center_chat", { message });
+  return res.data;
+}
+
+export async function getWasteForecast({
+  centre_vaccine_id,
+  days_to_forecast,
+  auth_token,
+}) {
+  const res = await ai.post("/forecast_waste", {
+    centre_vaccine_id: "690e473c078a4481e3c69863",
+    days_to_forecast: days_to_forecast,
+    auth_token: auth_token,
+  });
+  return res.data;
+}
+
+export async function getDemandForecast({
+  centre_vaccine_id,
+  days_to_forecast,
+  auth_token,
+}) {
+  const res = await ai.post("/forecast_demand", {
+    centre_vaccine_id: "690e473c078a4481e3c69863",
+    days_to_forecast: days_to_forecast,
+    auth_token: auth_token,
+  });
+  return res.data;
+}
+
+export default { askGuidance, askCenterChat, getWasteForecast, getDemandForecast };

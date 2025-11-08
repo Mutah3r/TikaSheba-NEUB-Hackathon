@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FiAlertTriangle,
   FiBarChart,
@@ -8,7 +8,9 @@ import {
   FiTrendingUp,
   FiX,
 } from "react-icons/fi";
-
+import { getWasteForecast, getDemandForecast } from "../../../services/aiService";
+import { listAssignedCentreVaccines } from "../../../services/centreVaccineService";
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from "recharts";
 const VACCINES = [
   { vaccineId: "covid_booster", vaccineName: "COVID-19 Booster" },
   { vaccineId: "influenza", vaccineName: "Influenza Seasonal" },
@@ -42,6 +44,7 @@ const computeWastage = (id, weeks) => {
 };
 
 const CentreForecast = () => {
+  const [rows, setRows] = useState(VACCINES);
   const [demandModal, setDemandModal] = useState({
     open: false,
     item: null,
@@ -55,7 +58,29 @@ const CentreForecast = () => {
     loading: false,
     period: null,
     result: null,
+    error: null,
   });
+
+  useEffect(() => {
+    const loadAssigned = async () => {
+      try {
+        const data = await listAssignedCentreVaccines();
+        const normalized = Array.isArray(data)
+          ? data.map((v) => ({
+              vaccineId: v?.vaccine_id || v?.vaccineId || v?.id,
+              vaccineName:
+                v?.vaccine_name || v?.vaccineName || v?.name || "Vaccine",
+              vaccine_id: v?.vaccine_id || v?.id,
+              centre_vaccine_id: v?.centre_vaccine_id || v?._id || v?.id,
+            }))
+          : [];
+        if (normalized.length) setRows(normalized);
+      } catch (_) {
+        // keep static list
+      }
+    };
+    loadAssigned();
+  }, []);
 
   const openDemand = (item) =>
     setDemandModal({
@@ -64,6 +89,7 @@ const CentreForecast = () => {
       loading: false,
       period: null,
       result: null,
+      error: null,
     });
   const closeDemand = () =>
     setDemandModal({
@@ -72,13 +98,41 @@ const CentreForecast = () => {
       loading: false,
       period: null,
       result: null,
+      error: null,
     });
-  const selectDemandPeriod = (p) => {
-    setDemandModal((m) => ({ ...m, loading: true, period: p, result: null }));
-    setTimeout(() => {
-      const val = computeDemand(demandModal.item?.vaccineId, p.weeks);
-      setDemandModal((m) => ({ ...m, loading: false, result: val }));
-    }, 1400);
+  const selectDemandPeriod = async (p) => {
+    const days_to_forecast = Math.max(1, (p?.weeks || 0) * 7);
+    const centre_vaccine_id =
+      demandModal.item?.vaccine_id ||
+      demandModal.item?.id ||
+      demandModal.item?.vaccineId;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const auth_token = token ? `Bearer ${token}` : "";
+    setDemandModal((m) => ({
+      ...m,
+      loading: true,
+      period: p,
+      result: null,
+      error: null,
+    }));
+    try {
+      const res = await getDemandForecast({
+        centre_vaccine_id,
+        days_to_forecast,
+        auth_token,
+      });
+      setDemandModal((m) => ({ ...m, loading: false, result: res }));
+    } catch (err) {
+      setDemandModal((m) => ({
+        ...m,
+        loading: false,
+        error:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to fetch demand forecast",
+      }));
+    }
   };
 
   const openWaste = (item) =>
@@ -98,11 +152,40 @@ const CentreForecast = () => {
       result: null,
     });
   const selectWastePeriod = (p) => {
-    setWasteModal((m) => ({ ...m, loading: true, period: p, result: null }));
-    setTimeout(() => {
-      const val = computeWastage(wasteModal.item?.vaccineId, p.weeks);
-      setWasteModal((m) => ({ ...m, loading: false, result: val }));
-    }, 1400);
+    const days_to_forecast = Math.max(1, (p?.weeks || 0) * 7);
+    const centre_vaccine_id =
+      wasteModal.item?.vaccine_id ||
+      wasteModal.item?.id ||
+      wasteModal.item?.vaccineId;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const auth_token = token ? `Bearer ${token}` : "";
+    setWasteModal((m) => ({
+      ...m,
+      loading: true,
+      period: p,
+      result: null,
+      error: null,
+    }));
+    (async () => {
+      try {
+        const body = { centre_vaccine_id, days_to_forecast, auth_token };
+        console.log(body);
+        const res = await getWasteForecast(body);
+        setWasteModal((m) => ({
+          ...m,
+          loading: false,
+          result: res,
+          error: null,
+        }));
+      } catch (err) {
+        setWasteModal((m) => ({
+          ...m,
+          loading: false,
+          error: err?.message || "Could not fetch wastage forecast.",
+        }));
+      }
+    })();
   };
 
   return (
@@ -130,9 +213,9 @@ const CentreForecast = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {VACCINES.map((row, idx) => (
+          {rows.map((row, idx) => (
             <motion.div
-              key={row.vaccineId}
+              key={row.vaccine_id || row.vaccineId}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.06 }}
@@ -140,7 +223,7 @@ const CentreForecast = () => {
             >
               <div className="flex items-center justify-between">
                 <div className="text-xs text-[#0c2b40]/70 font-mono">
-                  {row.vaccineId}
+                  {row.vaccine_id || row.vaccineId}
                 </div>
               </div>
               <div className="mt-4 space-y-2 text-sm">
@@ -218,7 +301,9 @@ const CentreForecast = () => {
                   {demandModal.item?.vaccineName}
                 </span>{" "}
                 (
-                <span className="font-mono">{demandModal.item?.vaccineId}</span>
+                <span className="font-mono">
+                  {demandModal.item?.vaccine_id || demandModal.item?.vaccineId}
+                </span>
                 ).
               </p>
 
@@ -235,18 +320,60 @@ const CentreForecast = () => {
                 ))}
               </div>
 
-              <div className="mt-4 min-h-[56px]">
+              <div className="mt-4 min-h-[120px]">
                 {demandModal.loading && (
-                  <div className="inline-flex items-center gap-2 text-xs text-[#081F2E]">
-                    <FiRefreshCw className="animate-spin" /> Calculating
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                    className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-xs text-[#081F2E] ring-1 ring-[#081F2E]/10"
+                  >
+                    <FiRefreshCw className="animate-spin" /> Fetching
                     forecast...
+                  </motion.div>
+                )}
+                {!demandModal.loading && demandModal.error && (
+                  <div className="inline-flex items-center gap-2 rounded-md bg-[#F04E36]/10 text-[#9b2c1a] ring-1 ring-[#F04E36]/30 px-3 py-2 text-xs">
+                    <FiAlertTriangle />
+                    {demandModal.error}
                   </div>
                 )}
-                {!demandModal.loading && demandModal.result !== null && (
-                  <div className="inline-flex items-center gap-2 rounded-md bg-[#E9F9EE] text-[#1a8a35] ring-1 ring-[#2FC94E]/30 px-3 py-2 text-xs">
-                    <FiTrendingUp />
-                    <span className="font-semibold">Demand:</span>
-                    <span>{demandModal.result.toLocaleString()} ampules</span>
+                {!demandModal.loading && demandModal.result?.daily_forecast && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#E9F9EE] text-[#1a8a35] ring-1 ring-[#2FC94E]/30 px-2 py-1">
+                        <FiTrendingUp /> Total forecast: {demandModal.result?.forecast_total}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#E9F9EE] text-[#1a8a35] ring-1 ring-[#2FC94E]/30 px-2 py-1">
+                        Days: {demandModal.result?.days_forecasted}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-[#081F2E]/5 ring-1 ring-[#081F2E]/10 p-3">
+                      {(() => {
+                        const raw = demandModal.result.daily_forecast || [];
+                        const data = raw.map((d) => ({
+                          date: d.date,
+                          predicted: d.predicted_usage || 0,
+                          margin: Math.max(0, (d.upper_bound || 0) - (d.predicted_usage || 0)),
+                          lower: d.lower_bound || 0,
+                          upper: d.upper_bound || 0,
+                        }));
+                        return (
+                          <div className="h-[220px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                                <CartesianGrid stroke="#081F2E1A" horizontal vertical={false} />
+                                <XAxis type="number" tick={{ fill: "#0c2b40", fontSize: 11 }} axisLine={{ stroke: "#081F2E2B" }} tickLine={{ stroke: "#081F2E2B" }} />
+                                <YAxis dataKey="date" type="category" tick={{ fill: "#0c2b40", fontSize: 11 }} axisLine={{ stroke: "#081F2E2B" }} tickLine={{ stroke: "#081F2E2B" }} width={88} />
+                                <Tooltip cursor={{ fill: "#081F2E0A" }} contentStyle={{ borderRadius: 12, background: "#fff", border: "1px solid rgba(8,31,46,0.1)" }} />
+                                <Bar dataKey="predicted" stackId="forecast" fill="#2FC94E" radius={[4, 4, 4, 4]} name="Predicted Usage" />
+                                <Bar dataKey="margin" stackId="forecast" fill="#EAB30866" radius={[4, 4, 4, 4]} name="Upper Bound Margin" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
@@ -305,7 +432,10 @@ const CentreForecast = () => {
                   {" "}
                   {wasteModal.item?.vaccineName}
                 </span>{" "}
-                (<span className="font-mono">{wasteModal.item?.vaccineId}</span>
+                (
+                <span className="font-mono">
+                  {wasteModal.item?.vaccine_id || wasteModal.item?.vaccineId}
+                </span>
                 ).
               </p>
 
@@ -322,18 +452,61 @@ const CentreForecast = () => {
                 ))}
               </div>
 
-              <div className="mt-4 min-h-[56px]">
+              <div className="mt-4 min-h-[120px]">
                 {wasteModal.loading && (
-                  <div className="inline-flex items-center gap-2 text-xs text-[#081F2E]">
-                    <FiRefreshCw className="animate-spin" /> Calculating
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                    className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-xs text-[#081F2E] ring-1 ring-[#081F2E]/10"
+                  >
+                    <FiRefreshCw className="animate-spin" /> Fetching
                     forecast...
+                  </motion.div>
+                )}
+                {!wasteModal.loading && wasteModal.error && (
+                  <div className="inline-flex items-center gap-2 rounded-md bg-[#F04E36]/10 text-[#9b2c1a] ring-1 ring-[#F04E36]/30 px-3 py-2 text-xs">
+                    <FiAlertTriangle />
+                    {wasteModal.error}
                   </div>
                 )}
-                {!wasteModal.loading && wasteModal.result !== null && (
-                  <div className="inline-flex items-center gap-2 rounded-md bg-[#FFE8BF] text-[#A05A00] ring-1 ring-[#EAB308]/30 px-3 py-2 text-xs">
-                    <FiAlertTriangle />
-                    <span className="font-semibold">Wastage:</span>
-                    <span>{wasteModal.result.toLocaleString()} ampules</span>
+                {!wasteModal.loading && wasteModal.result?.daily_forecast && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#FFE8BF] text-[#A05A00] ring-1 ring-[#EAB308]/30 px-2 py-1">
+                        <FiAlertTriangle /> Total forecast:{" "}
+                        {wasteModal.result?.forecast_total}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#E9F9EE] text-[#1a8a35] ring-1 ring-[#2FC94E]/30 px-2 py-1">
+                        Days: {wasteModal.result?.days_forecasted}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-[#081F2E]/5 ring-1 ring-[#081F2E]/10 p-3">
+                      {(() => {
+                        const raw = wasteModal.result.daily_forecast || [];
+                        const data = raw.map((d) => ({
+                          date: d.date,
+                          predicted: d.predicted_usage || 0,
+                          margin: Math.max(0, (d.upper_bound || 0) - (d.predicted_usage || 0)),
+                          lower: d.lower_bound || 0,
+                          upper: d.upper_bound || 0,
+                        }));
+                        return (
+                          <div className="h-[220px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                                <CartesianGrid stroke="#081F2E1A" horizontal vertical={false} />
+                                <XAxis type="number" tick={{ fill: "#0c2b40", fontSize: 11 }} axisLine={{ stroke: "#081F2E2B" }} tickLine={{ stroke: "#081F2E2B" }} />
+                                <YAxis dataKey="date" type="category" tick={{ fill: "#0c2b40", fontSize: 11 }} axisLine={{ stroke: "#081F2E2B" }} tickLine={{ stroke: "#081F2E2B" }} width={88} />
+                                <Tooltip cursor={{ fill: "#081F2E0A" }} contentStyle={{ borderRadius: 12, background: "#fff", border: "1px solid rgba(8,31,46,0.1)" }} />
+                                <Bar dataKey="predicted" stackId="forecast" fill="#2FC94E" radius={[4, 4, 4, 4]} name="Predicted Usage" />
+                                <Bar dataKey="margin" stackId="forecast" fill="#EAB30866" radius={[4, 4, 4, 4]} name="Upper Bound Margin" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
