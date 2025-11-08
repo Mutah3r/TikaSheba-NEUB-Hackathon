@@ -4,11 +4,15 @@ import {
   FiAlertTriangle,
   FiDatabase,
   FiPlus,
+  FiClock,
+  FiRefreshCw,
   FiTrash2,
   FiTrendingUp,
   FiX,
 } from "react-icons/fi";
 import { getVaccines, createVaccine, deleteVaccine } from "../../../services/authorityService";
+import { getDemandForecast, getWasteForecast } from "../../../services/aiService";
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar } from "recharts";
 import Notification from "../../../components/Notification";
 
 const AuthorityVaccines = () => {
@@ -19,7 +23,7 @@ const AuthorityVaccines = () => {
   const [newName, setNewName] = useState("");
   const [newInfo, setNewInfo] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [forecastModal, setForecastModal] = useState({ type: null, item: null });
+  const [forecastModal, setForecastModal] = useState({ type: null, item: null, period: null, loading: false, result: null, error: null });
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "success", message: "" });
@@ -93,20 +97,39 @@ const AuthorityVaccines = () => {
     }
   };
 
-  const openForecast = (type, item) => setForecastModal({ type, item });
-  const closeForecast = () => setForecastModal({ type: null, item: null });
+  const openForecast = (type, item) => setForecastModal({ type, item, period: null, loading: false, result: null, error: null });
+  const closeForecast = () => setForecastModal({ type: null, item: null, period: null, loading: false, result: null, error: null });
 
-  const hashId = (id) => [...id].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const forecastText = useMemo(() => {
-    if (!forecastModal.item || !forecastModal.type) return null;
-    const h = hashId(forecastModal.item.id);
-    if (forecastModal.type === "demand") {
-      const demand = (h % 800) + 300; // 300–1100 range
-      return `Projected demand over next 4 weeks: ~${demand.toLocaleString()} doses.`;
+  const PERIODS = [
+    { key: "1w", label: "1 Week", weeks: 1 },
+    { key: "2w", label: "2 Weeks", weeks: 2 },
+    { key: "3w", label: "3 Weeks", weeks: 3 },
+    { key: "1m", label: "1 Month", weeks: 4 },
+    { key: "2m", label: "2 Months", weeks: 8 },
+    { key: "4m", label: "4 Months", weeks: 16 },
+    { key: "6m", label: "6 Months", weeks: 24 },
+  ];
+
+  const selectForecastPeriod = async (p) => {
+    if (!forecastModal.item || !forecastModal.type) return;
+    const days_to_forecast = Math.max(1, (p?.weeks || 0) * 7);
+    const centre_vaccine_id = forecastModal.item?.vaccine_id || forecastModal.item?.id;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const auth_token = token ? `Bearer ${token}` : "";
+    setForecastModal((m) => ({ ...m, loading: true, period: p, result: null, error: null }));
+    try {
+      const api = forecastModal.type === "demand" ? getDemandForecast : getWasteForecast;
+      const res = await api({ centre_vaccine_id, days_to_forecast, auth_token });
+      setForecastModal((m) => ({ ...m, loading: false, result: res }));
+    } catch (err) {
+      setForecastModal((m) => ({
+        ...m,
+        loading: false,
+        error:
+          err?.response?.data?.message || err?.message || "Failed to fetch forecast",
+      }));
     }
-    const waste = ((h % 6) + 2).toFixed(1); // 2.0–7.0%
-    return `Projected wastage risk: ~${waste}% given current patterns.`;
-  }, [forecastModal]);
+  };
 
   return (
     <>
@@ -417,7 +440,76 @@ const AuthorityVaccines = () => {
                 <div>
                   Vaccine: <span className="font-semibold text-[#081F2E]">{forecastModal.item.name}</span> (<span className="font-mono">{forecastModal.item.id}</span>)
                 </div>
-                <p className="mt-2">{forecastText}</p>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {PERIODS.map((p) => (
+                  <motion.button
+                    key={p.key}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => selectForecastPeriod(p)}
+                    className="flex items-center justify-center gap-1.5 text-xs rounded-md px-3 py-1.5 ring-1 ring-[#081F2E]/15 bg-white hover:bg-[#f7f9fb] text-[#081F2E]"
+                  >
+                    <FiClock /> {p.label}
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="mt-4 min-h-[120px]">
+                {forecastModal.loading && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                    className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-xs text-[#081F2E] ring-1 ring-[#081F2E]/10"
+                  >
+                    <FiRefreshCw className="animate-spin" /> Fetching forecast...
+                  </motion.div>
+                )}
+                {!forecastModal.loading && forecastModal.error && (
+                  <div className="inline-flex items-center gap-2 rounded-md bg-[#F04E36]/10 text-[#9b2c1a] ring-1 ring-[#F04E36]/30 px-3 py-2 text-xs">
+                    <FiAlertTriangle />
+                    {forecastModal.error}
+                  </div>
+                )}
+                {!forecastModal.loading && forecastModal.result?.daily_forecast && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#E9F9EE] text-[#1a8a35] ring-1 ring-[#2FC94E]/30 px-2 py-1">
+                        {forecastModal.type === "demand" ? <FiTrendingUp /> : <FiAlertTriangle />}
+                        Total forecast: {forecastModal.result?.forecast_total}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#E9F9EE] text-[#1a8a35] ring-1 ring-[#2FC94E]/30 px-2 py-1">
+                        Days: {forecastModal.result?.days_forecasted}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-[#081F2E]/5 ring-1 ring-[#081F2E]/10 p-3">
+                      {(() => {
+                        const raw = forecastModal.result.daily_forecast || [];
+                        const data = raw.map((d) => ({
+                          date: d.date,
+                          predicted: d.predicted_usage || 0,
+                          margin: Math.max(0, (d.upper_bound || 0) - (d.predicted_usage || 0)),
+                          lower: d.lower_bound || 0,
+                          upper: d.upper_bound || 0,
+                        }));
+                        return (
+                          <div className="h-[220px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                                <CartesianGrid stroke="#081F2E1A" horizontal vertical={false} />
+                                <XAxis type="number" tick={{ fill: "#0c2b40", fontSize: 11 }} axisLine={{ stroke: "#081F2E2B" }} tickLine={{ stroke: "#081F2E2B" }} />
+                                <YAxis dataKey="date" type="category" tick={{ fill: "#0c2b40", fontSize: 11 }} axisLine={{ stroke: "#081F2E2B" }} tickLine={{ stroke: "#081F2E2B" }} width={88} />
+                                <Tooltip cursor={{ fill: "#081F2E0A" }} contentStyle={{ borderRadius: 12, background: "#fff", border: "1px solid rgba(8,31,46,0.1)" }} />
+                                <Bar dataKey="predicted" stackId="forecast" fill="#2FC94E" radius={[4, 4, 4, 4]} name="Predicted Usage" />
+                                <Bar dataKey="margin" stackId="forecast" fill="#EAB30866" radius={[4, 4, 4, 4]} name="Upper Bound Margin" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="mt-4 flex items-center justify-end">
                 <button
