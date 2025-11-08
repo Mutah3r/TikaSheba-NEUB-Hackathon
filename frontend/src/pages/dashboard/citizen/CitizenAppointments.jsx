@@ -10,43 +10,39 @@ import {
   FiXCircle,
 } from "react-icons/fi";
 
-const STATUS = ["requested", "scheduled", "done", "cancelled", "missed"];
+const STATUS = ["scheduled", "done", "cancelled", "missed"];
 
 const STATUS_META = {
   requested: {
     label: "Requested",
     icon: FiSend,
-    classes:
-      "text-[#081F2E] bg-[#081F2E]/10 ring-1 ring-[#081F2E]/20",
+    classes: "text-[#081F2E] bg-[#081F2E]/10 ring-1 ring-[#081F2E]/20",
   },
   scheduled: {
     label: "Scheduled",
     icon: FiCalendar,
-    classes:
-      "text-[#EAB308] bg-[#EAB308]/15 ring-1 ring-[#EAB308]/30",
+    classes: "text-[#EAB308] bg-[#EAB308]/15 ring-1 ring-[#EAB308]/30",
   },
   done: {
     label: "Completed",
     icon: FiCheckCircle,
-    classes:
-      "text-[#2FC94E] bg-[#2FC94E]/10 ring-1 ring-[#2FC94E]/30",
+    classes: "text-[#2FC94E] bg-[#2FC94E]/10 ring-1 ring-[#2FC94E]/30",
   },
   cancelled: {
     label: "Cancelled",
     icon: FiXCircle,
-    classes:
-      "text-[#F04E36] bg-[#F04E36]/10 ring-1 ring-[#F04E36]/30",
+    classes: "text-[#F04E36] bg-[#F04E36]/10 ring-1 ring-[#F04E36]/30",
   },
   missed: {
     label: "Missed",
     icon: FiAlertCircle,
-    classes:
-      "text-[#EAB308] bg-[#EAB308]/15 ring-1 ring-[#EAB308]/30",
+    classes: "text-[#EAB308] bg-[#EAB308]/15 ring-1 ring-[#EAB308]/30",
   },
 };
 
 import { getAppointmentsByCitizen } from "../../../services/appointmentService";
 import { getCurrentUser } from "../../../services/userService";
+import ImageModal from "../../../components/ImageModal";
 
 const toDisplayIso = (dateIso, timeRaw) => {
   try {
@@ -92,6 +88,16 @@ const CitizenAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrSrc, setQrSrc] = useState("");
+  const [qrTitle, setQrTitle] = useState("");
+
+  const openQr = (src, vaccine) => {
+    if (!src) return;
+    setQrSrc(src);
+    setQrTitle(`QR Code - ${vaccine || "Appointment"}`);
+    setQrOpen(true);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -113,9 +119,13 @@ const CitizenAppointments = () => {
         const normalized = list.map((item, idx) => ({
           id: item._id || `appt-${idx}`,
           vaccine: item.vaccine_name || "Unknown",
-          status: item.status || "requested",
+          status:
+            item.status === "requested"
+              ? "scheduled"
+              : item.status || "scheduled",
           time: toDisplayIso(item.date, item.time),
           centre: item.center_id || "-",
+          qr_code: item.qr_url,
         }));
         if (!mounted) return;
         setAppointments(normalized);
@@ -150,7 +160,9 @@ const CitizenAppointments = () => {
         <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAB308]/20 text-[#EAB308] ring-1 ring-[#EAB308]/30">
           <FiClipboard />
         </div>
-        <h2 className="text-xl font-semibold text-[#081F2E]">My Appointments</h2>
+        <h2 className="text-xl font-semibold text-[#081F2E]">
+          My Appointments
+        </h2>
       </div>
 
       {/* Container */}
@@ -185,10 +197,14 @@ const CitizenAppointments = () => {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setActiveStatus(s)}
                   className={`relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ring-1 ${
-                    isActive ? "bg-white ring-[#F04E36]/20 text-[#081F2E] shadow" : "bg-[#081F2E]/5 ring-[#081F2E]/15 text-[#081F2E]"
+                    isActive
+                      ? "bg-white ring-[#F04E36]/20 text-[#081F2E] shadow"
+                      : "bg-[#081F2E]/5 ring-[#081F2E]/15 text-[#081F2E]"
                   }`}
                 >
-                  <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 ${Meta.classes}`}>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 ${Meta.classes}`}
+                  >
                     <Icon />
                     {Meta.label}
                   </span>
@@ -228,10 +244,21 @@ const CitizenAppointments = () => {
           <table className="min-w-full">
             <thead className="bg-[#081F2E]/5">
               <tr>
-                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">Vaccine Name</th>
-                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">Status</th>
-                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">Time</th>
-                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">Centre</th>
+                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">
+                  Vaccine Name
+                </th>
+                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">
+                  Status
+                </th>
+                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">
+                  Time
+                </th>
+                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">
+                  Centre
+                </th>
+                <th className="text-left text-xs font-semibold text-[#081F2E] px-4 py-3">
+                  QR Code
+                </th>
               </tr>
             </thead>
             <AnimatePresence initial={false}>
@@ -242,7 +269,7 @@ const CitizenAppointments = () => {
                 transition={{ type: "spring", stiffness: 240, damping: 22 }}
               >
                 {filtered.map((a) => {
-                  const Meta = STATUS_META[a.status] || STATUS_META.requested;
+                  const Meta = STATUS_META[a.status] || STATUS_META.scheduled;
                   const Icon = Meta.icon;
                   return (
                     <motion.tr
@@ -250,18 +277,44 @@ const CitizenAppointments = () => {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
-                      transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 24,
+                      }}
                       className="border-t border-[#081F2E]/10"
                     >
-                      <td className="px-4 py-3 text-sm text-[#081F2E]">{a.vaccine}</td>
+                      <td className="px-4 py-3 text-sm text-[#081F2E]">
+                        {a.vaccine}
+                      </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-medium ${Meta.classes}`}>
+                        <span
+                          className={`inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-medium ${Meta.classes}`}
+                        >
                           <Icon />
                           {Meta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-[#0c2b40]/80">{formatDateTime(a.time)}</td>
-                      <td className="px-4 py-3 text-sm text-[#0c2b40]/80">{a.centre}</td>
+                      <td className="px-4 py-3 text-sm text-[#0c2b40]/80">
+                        {formatDateTime(a.time)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#0c2b40]/80">
+                        {a.centre}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => openQr(a.qr_code, a.vaccine)}
+                          className="w-12 h-12 rounded-md bg-[#081F2E]/5 flex items-center justify-center hover:bg-[#081F2E]/10 focus:outline-none"
+                          aria-label={`Open QR Code for ${a.vaccine}`}
+                        >
+                          <img
+                            src={a.qr_code}
+                            alt={`QR Code for ${a.vaccine}`}
+                            className="w-8 h-8"
+                          />
+                        </button>
+                      </td>
                     </motion.tr>
                   );
                 })}
@@ -271,7 +324,10 @@ const CitizenAppointments = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <td colSpan={4} className="px-4 py-6 text-center text-sm text-[#0c2b40]/70">
+                    <td
+                      colSpan={5}
+                      className="px-4 py-6 text-center text-sm text-[#0c2b40]/70"
+                    >
                       No appointments found for the selected status.
                     </td>
                   </motion.tr>
@@ -281,6 +337,12 @@ const CitizenAppointments = () => {
           </table>
         </div>
       </div>
+      <ImageModal
+        isOpen={qrOpen}
+        onClose={() => setQrOpen(false)}
+        imageUrl={qrSrc}
+        title={qrTitle}
+      />
     </motion.section>
   );
 };

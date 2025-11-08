@@ -68,7 +68,7 @@ const DashboardLayout = () => {
           label: "My Appointments",
           icon: FiClipboard,
         },
-        { to: `${basePath}/logs`, label: "Logs", icon: FiActivity },
+        // { to: `${basePath}/logs`, label: "Logs", icon: FiActivity },
         {
           to: `${basePath}/ai`,
           label: "Get AI Guidance",
@@ -81,8 +81,16 @@ const DashboardLayout = () => {
         { to: basePath, label: "Home", icon: FiHome },
         { to: `${basePath}/vaccines`, label: "Vaccines", icon: FiDatabase },
         { to: `${basePath}/centres`, label: "Vaccine Centres", icon: FiUsers },
-        { to: `${basePath}/requests`, label: "Stock Requests", icon: FiClipboard },
-        { to: `${basePath}/visualization`, label: "Visualization", icon: FiBarChart2 },
+        {
+          to: `${basePath}/requests`,
+          label: "Stock Requests",
+          icon: FiClipboard,
+        },
+        {
+          to: `${basePath}/visualization`,
+          label: "Visualization",
+          icon: FiBarChart2,
+        },
         { to: `${basePath}/ai`, label: "AI Insights", icon: FiMessageSquare },
       ];
     }
