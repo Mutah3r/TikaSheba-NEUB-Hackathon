@@ -240,19 +240,25 @@ const CentreStock = () => {
     async function fetchAssigned() {
       try {
         const res = await listAssignedCentreVaccines();
-        const assigned = Array.isArray(res?.data) ? res.data : [];
+        console.log("CentreStock assigned raw:", res);
+        const assigned = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : res?.data?.data || [];
+        console.log("CentreStock assigned normalized:", assigned);
         const rows = assigned.map((v) => ({
-          vaccineId: v.id,
-          vaccineName: v.name,
-          description: v.description,
-          centreVaccineId: v.centre_vaccine_id,
-          currentStock: 0,
-          requestedAmount: 0,
-          requestStatus: "sent",
-          totalServed: 0,
-          totalAmpulesUsed: 0,
-          totalAmpulesWasted: 0,
+          centreVaccineId: v.centre_vaccine_id || v._id || v.id,
+          vaccineId: v.vaccine_id,
+          vaccineName: v.vaccine_name,
+          currentStock: Number(v.current_stock || 0),
+          requestedAmount: Number(v.requested_stock_amount || 0),
+          requestStatus: v.requested_status || "sent",
+          totalServed: Number(v.total_people || 0),
+          totalAmpulesUsed: Number(v.total_dosed || 0),
+          totalAmpulesWasted: Number(v.total_wasted || 0),
         }));
+        console.log("CentreStock rows mapped:", rows);
         setStockRows(rows);
       } catch (err) {
         console.error("Failed to fetch assigned vaccines", err);
@@ -371,10 +377,7 @@ const CentreStock = () => {
                       : "bg-gradient-to-br from-[#E9F9EE] via-white to-[#D7F3E2] ring-[#2FC94E]/20")
                   }
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-[#0c2b40]/70">
-                      {row.vaccineId}
-                    </div>
+                  <div className="flex items-center justify-end">
                     <div className="flex items-center gap-2">
                       <motion.button
                         whileTap={{ scale: 0.98 }}
@@ -401,23 +404,32 @@ const CentreStock = () => {
                         {row.vaccineName}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#0c2b40]/80">Vaccine ID</span>
-                      <span className="text-[#081F2E] font-mono">
-                        {row.vaccineId}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#0c2b40]/80">Centre Vaccine ID</span>
-                      <span className="text-[#081F2E] font-mono">
-                        {row.centreVaccineId}
-                      </span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[#081F2E]/5 ring-1 ring-[#081F2E]/15">
-                      <div className="text-xs text-[#0c2b40]/70 mb-1">Description</div>
-                      <p className="text-[#081F2E]/80 text-xs leading-relaxed">
-                        {row.description}
-                      </p>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex justify-between">
+                        <span className="text-[#0c2b40]/80">Current Stock</span>
+                        <span className="text-[#081F2E] font-mono">{row.currentStock}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#0c2b40]/80">Requested</span>
+                        <span className="text-[#081F2E] font-mono">{row.requestedAmount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#0c2b40]/80">Status</span>
+                        <span className="text-[#081F2E] font-bold">{row.requestStatus}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#0c2b40]/80">Total Served</span>
+                        <span className="text-[#081F2E] font-mono">{row.totalServed}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#0c2b40]/80">Ampules Used</span>
+                        <span className="text-[#081F2E] font-mono">{row.totalAmpulesUsed}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#0c2b40]/80">Ampules Wasted</span>
+                        <span className="text-[#081F2E] font-mono">{row.totalAmpulesWasted}</span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

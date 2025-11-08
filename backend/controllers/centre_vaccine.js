@@ -290,31 +290,22 @@ async function getAssignedForCentre(req, res) {
     if (!centreId) {
       return res.status(400).json({ message: 'Missing centre id (vc_id) for user' });
     }
-    // Fetch assigned records for this centre and derive unique vaccine names
-    const assigned = await CentreVaccine.find({ centre_id: centreId })
-      .select('_id vaccine_name')
+    // Return centre_vaccine records directly for this centre
+    const docs = await CentreVaccine.find({ centre_id: centreId })
+      .select('_id centre_id vaccine_id vaccine_name current_stock requested_stock_amount requested_status total_people total_dosed total_wasted created_at')
       .lean();
-    const names = Array.from(new Set((assigned || []).map((d) => d.vaccine_name).filter(Boolean)));
-    const nameToCentreVaccineId = new Map();
-    for (const a of assigned || []) {
-      if (a?.vaccine_name && !nameToCentreVaccineId.has(a.vaccine_name)) {
-        nameToCentreVaccineId.set(a.vaccine_name, a._id?.toString());
-      }
-    }
-
-    if (!names.length) {
-      return res.status(200).json([]);
-    }
-
-    // Fetch vaccine metadata by names and return only name and description
-    const vaccines = await Vaccine.find({ name: { $in: names } })
-      .select('name description _id')
-      .lean();
-    const result = (vaccines || []).map((v) => ({
-      id: v._id.toString(),
-      name: v.name,
-      description: v.description,
-      centre_vaccine_id: nameToCentreVaccineId.get(v.name) || null,
+    const result = (docs || []).map((d) => ({
+      centre_vaccine_id: d._id.toString(),
+      centre_id: d.centre_id,
+      vaccine_id: d.vaccine_id,
+      vaccine_name: d.vaccine_name,
+      current_stock: Number(d.current_stock || 0),
+      requested_stock_amount: Number(d.requested_stock_amount || 0),
+      requested_status: d.requested_status || 'sent',
+      total_people: Number(d.total_people || 0),
+      total_dosed: Number(d.total_dosed || 0),
+      total_wasted: Number(d.total_wasted || 0),
+      created_at: d.created_at ? new Date(d.created_at).toISOString() : null,
     }));
     return res.status(200).json(result);
   } catch (err) {
@@ -338,17 +329,23 @@ async function getAssignedForCentreByAuthority(req, res) {
         return res.status(400).json({ message: 'centre_id is required' });
       }
     }
-    const assigned = await CentreVaccine.find({ centre_id })
-      .select('vaccine_name')
+    // Return centre_vaccine records directly for the specified centre
+    const docs = await CentreVaccine.find({ centre_id })
+      .select('_id centre_id vaccine_id vaccine_name current_stock requested_stock_amount requested_status total_people total_dosed total_wasted created_at')
       .lean();
-    const names = Array.from(new Set((assigned || []).map((d) => d.vaccine_name).filter(Boolean)));
-    if (!names.length) {
-      return res.status(200).json([]);
-    }
-    const vaccines = await Vaccine.find({ name: { $in: names } })
-      .select('name description _id')
-      .lean();
-    const result = (vaccines || []).map((v) => ({ id: v._id.toString(), name: v.name, description: v.description }));
+    const result = (docs || []).map((d) => ({
+      centre_vaccine_id: d._id.toString(),
+      centre_id: d.centre_id,
+      vaccine_id: d.vaccine_id,
+      vaccine_name: d.vaccine_name,
+      current_stock: Number(d.current_stock || 0),
+      requested_stock_amount: Number(d.requested_stock_amount || 0),
+      requested_status: d.requested_status || 'sent',
+      total_people: Number(d.total_people || 0),
+      total_dosed: Number(d.total_dosed || 0),
+      total_wasted: Number(d.total_wasted || 0),
+      created_at: d.created_at ? new Date(d.created_at).toISOString() : null,
+    }));
     return res.status(200).json(result);
   } catch (err) {
     console.error('getAssignedForCentreByAuthority error:', err);

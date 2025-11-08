@@ -11,9 +11,13 @@ import {
 import CancelModal from "../../components/CancelModal";
 import MapModal from "../../components/MapModal";
 import PdfModal from "../../components/PdfModal";
+<<<<<<< HEAD
 import { getAppointmentsByCitizen } from "../../services/appointmentService";
 import { getVaccineCentres } from "../../services/centreService";
 import { getCurrentUser } from "../../services/userService";
+=======
+import { generateCitizenVaccineCard } from "../../services/graphService";
+>>>>>>> 39cf44f6d4b86e2f8cf3c6804fe0650ade9fe592
 
 const CitizenDashboard = () => {
   const [profile, setProfile] = useState({
@@ -202,6 +206,142 @@ const CitizenDashboard = () => {
   const [pdfOpen, setPdfOpen] = useState(false);
   const pdfUrl = "https://pdfobject.com/pdf/sample.pdf";
 
+  // Build pretty HTML and trigger browser print (Save as PDF)
+  const printVaccineCard = (payload, qrUrl) => {
+    const safe = (v) => (v == null ? "" : String(v));
+    const vaccinesHtml = (Array.isArray(payload?.vaccines) ? payload.vaccines : [])
+      .map(
+        (v, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${safe(v.vaccine_name)}</td>
+          <td>${safe(v.vaccine_id)}</td>
+          <td>${new Date(v.time_stamp).toLocaleString()}</td>
+        </tr>`
+      )
+      .join("\n");
+
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>E‑Vaccine Card</title>
+      <style>
+        :root {
+          --ink: #081F2E;
+          --muted: #37566b;
+          --accent: #EAB308;
+          --bg: #ffffff;
+        }
+        @page { size: A4; margin: 18mm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--ink); background: var(--bg); }
+        .card {
+          max-width: 800px; margin: 0 auto; border: 1px solid rgba(8,31,46,0.12);
+          border-radius: 16px; overflow: hidden; box-shadow: 0 6px 18px rgba(8,31,46,0.08);
+        }
+        .header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 22px; background: linear-gradient(135deg, rgba(234,179,8,0.18), rgba(255,245,230,0.6));
+          border-bottom: 1px solid rgba(8,31,46,0.12);
+        }
+        .title { font-size: 22px; font-weight: 800; letter-spacing: 0.2px; }
+        .meta { font-size: 12px; color: var(--muted); }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px 22px; }
+        .block { background: rgba(8,31,46,0.04); border: 1px solid rgba(8,31,46,0.10); border-radius: 12px; padding: 14px; }
+        .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+        .value { font-size: 16px; font-weight: 700; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(8,31,46,0.08); font-size: 12px; }
+        th { background: rgba(8,31,46,0.05); font-size: 12px; color: var(--muted); }
+        .section { padding: 10px 22px 22px; }
+        .qr { display: flex; align-items: center; justify-content: center; padding: 18px; }
+        .footer { font-size: 11px; color: var(--muted); padding: 12px 22px; border-top: 1px solid rgba(8,31,46,0.12); }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(234,179,8,0.18); color: var(--ink); font-size: 11px; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <div>
+            <div class="title">National E‑Vaccine Card</div>
+            <div class="meta">Digitally generated card • ${new Date(payload?.generated_at || Date.now()).toLocaleString()}</div>
+          </div>
+          <div class="badge">Verified Citizen</div>
+        </div>
+
+        <div class="row">
+          <div class="block">
+            <div class="label">Citizen Name</div>
+            <div class="value">${safe(payload?.citizen_name)}</div>
+          </div>
+          <div class="block">
+            <div class="label">Citizen ID</div>
+            <div class="value">${safe(payload?.citizen_id)}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label">Vaccine Records</div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Vaccine Name</th>
+                <th>Vaccine ID</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${vaccinesHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="qr">
+          <img src="${qrUrl}" alt="Vaccine Card QR" style="width:200px;height:200px;border: 1px solid rgba(8,31,46,0.12); border-radius: 12px;" />
+        </div>
+
+        <div class="footer">
+          Scan the QR to verify authenticity. This document is generated by the national vaccination system.
+        </div>
+      </div>
+      <script>
+        window.addEventListener('load', () => {
+          setTimeout(() => {
+            window.print();
+          }, 300);
+        });
+      </script>
+    </body>
+    </html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Popup blocked. Please allow popups to download the PDF.');
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const handleViewCard = async () => {
+    try {
+      const res = await generateCitizenVaccineCard();
+      // res should be { message, qr_url, payload }
+      if (!res?.qr_url || !res?.payload) {
+        console.error('Unexpected response for vaccine card:', res);
+        alert('Failed to generate vaccine card.');
+        return;
+      }
+      printVaccineCard(res.payload, res.qr_url);
+    } catch (err) {
+      console.error('Generate vaccine card error', err);
+      alert(err?.message || 'Failed to generate vaccine card');
+    }
+  };
+
   return (
     <div className="relative">
       {/* Floating Action Panel */}
@@ -344,7 +484,7 @@ const CitizenDashboard = () => {
           <div className="p-5 border-b border-[#081F2E]/10 flex items-center justify-between">
             <h2 className="text-xl font-bold">E‑Vaccine Card</h2>
             <button
-              onClick={() => setPdfOpen(true)}
+              onClick={handleViewCard}
               className="inline-flex items-center gap-2 rounded-xl bg-[#EAB308] text-[#081F2E] px-3 py-2 text-sm hover:bg-[#d1a207]"
             >
               View Card

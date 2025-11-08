@@ -6,7 +6,7 @@ import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recha
 const STAFF_ROWS = [
   {
     id: "st1",
-    name: "Dr. Kamal Hassan",
+    name: "Kamal Hassan",
     assignedVaccines: ["COVID-19 Booster", "Hepatitis B"],
     history: [
       { day: "Mon", used: 18, wasted: 1 },
