@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FiCalendar,
   FiChevronLeft,
@@ -8,6 +8,8 @@ import {
   FiSend,
   FiX,
 } from "react-icons/fi";
+import { getCentreCapacityNext30, createAppointment } from "../services/appointmentService";
+import { getCurrentUser } from "../services/userService";
 
 const ScheduleRequestModal = ({
   isOpen,
@@ -45,21 +47,51 @@ const ScheduleRequestModal = ({
   const [currentMonth, setCurrentMonth] = useState(initialMonthStart);
   const [monthDirection, setMonthDirection] = useState(0);
 
-  const unavailableSet = useMemo(() => {
-    const keys = [];
-    for (let d = minDate; d <= maxDate; d = addDays(d, 1)) {
-      keys.push(toKey(d));
+  const [availableSet, setAvailableSet] = useState(new Set());
+  const [capacityLoading, setCapacityLoading] = useState(false);
+  const [capacityError, setCapacityError] = useState("");
+
+  useEffect(() => {
+    const cid = centre?.vc_id ?? centre?.id;
+    if (!isOpen || !cid) {
+      setAvailableSet(new Set());
+      setCapacityError("");
+      setCapacityLoading(false);
+      return;
     }
-    const count = Math.min(6, Math.max(4, Math.floor(keys.length * 0.2)));
-    const pick = new Set();
-    while (pick.size < count && keys.length) {
-      const idx = Math.floor(Math.random() * keys.length);
-      pick.add(keys[idx]);
-      keys.splice(idx, 1);
+    let cancelled = false;
+    async function fetchCapacity() {
+      setCapacityLoading(true);
+      setCapacityError("");
+      try {
+        const res = await getCentreCapacityNext30(cid);
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+        const set = new Set(
+          list
+            .filter((item) => {
+              const n = Number(item?.available ?? 0);
+              return Number.isFinite(n) && n > 0 && typeof item?.date === "string";
+            })
+            .map((item) => item.date)
+        );
+        if (!cancelled) setAvailableSet(set);
+        if (!cancelled) setCapacityLoading(false);
+      } catch (err) {
+        if (!cancelled) setCapacityError(err?.message || "Failed to load availability");
+        if (!cancelled) setCapacityLoading(false);
+      }
     }
-    return pick;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchCapacity();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, centre?.vc_id, centre?.id]);
 
   const withinRange = (d) => d >= minDate && d <= maxDate;
   const canGoPrev = currentMonth > minMonthStart;
@@ -75,13 +107,9 @@ const ScheduleRequestModal = ({
     setCurrentMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1));
   };
 
-  const [selectedDate, setSelectedDate] = useState(() => {
-    if (!centre?.availableDate) return null;
-    const cand = startOfDay(new Date(centre.availableDate));
-    const k = toKey(cand);
-    if (withinRange(cand) && !unavailableSet.has(k)) return cand;
-    return null;
-  });
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const selectedDateStr = selectedDate
     ? selectedDate.toLocaleDateString("en-GB", {
@@ -111,7 +139,7 @@ const ScheduleRequestModal = ({
       const inThisMonth = d.getMonth() === currentMonth.getMonth();
       const key = toKey(d);
       const allowed = withinRange(d);
-      const isUnavailable = allowed && unavailableSet.has(key);
+      const isUnavailable = allowed && !availableSet.has(key);
       const isDisabled = !allowed || !inThisMonth || isUnavailable;
       cells.push({
         date: d,
@@ -218,63 +246,65 @@ const ScheduleRequestModal = ({
                         ))}
                       </div>
                       <AnimatePresence initial={false} mode="wait">
-                        <motion.div
-                          key={currentMonth.toISOString()}
-                          initial={{ opacity: 0, x: monthDirection * 12 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -monthDirection * 12 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 240,
-                            damping: 22,
-                          }}
-                          className="grid grid-cols-7 gap-1"
-                        >
-                          {getCalendarCells().map((cell) => {
-                            const isSelected =
-                              selectedDate && toKey(selectedDate) === cell.key;
-                            const baseClasses =
-                              "relative h-9 rounded-lg ring-1 text-xs flex items-center justify-center";
-                            const disabledClasses = cell.isDisabled
-                              ? "bg-[#081F2E]/5 ring-[#081F2E]/10 text-[#0c2b40]/40 cursor-not-allowed"
-                              : "bg-white ring-[#081F2E]/10 text-[#081F2E] hover:bg-[#081F2E]/5";
-                            const unavailableClasses =
-                              cell.isUnavailable && !cell.isDisabled
+                        {capacityLoading ? (
+                          <motion.div
+                            key="calendar-loading"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 240, damping: 22 }}
+                            className="flex items-center justify-center h-40"
+                          >
+                            <div className="flex items-center gap-2 text-sm text-[#0c2b40]/70">
+                              <div className="h-5 w-5 rounded-full border-2 border-[#081F2E] border-t-transparent animate-spin" />
+                              Loading available days…
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key={currentMonth.toISOString()}
+                            initial={{ opacity: 0, x: monthDirection * 12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -monthDirection * 12 }}
+                            transition={{ type: "spring", stiffness: 240, damping: 22 }}
+                            className="grid grid-cols-7 gap-1"
+                          >
+                            {getCalendarCells().map((cell) => {
+                              const isSelected = selectedDate && toKey(selectedDate) === cell.key;
+                              const baseClasses = "relative h-9 rounded-lg ring-1 text-xs flex items-center justify-center";
+                              const disabledClasses = cell.isDisabled
+                                ? "bg-[#081F2E]/5 ring-[#081F2E]/10 text-[#0c2b40]/40 cursor-not-allowed"
+                                : "bg-white ring-[#081F2E]/10 text-[#081F2E] hover:bg-[#081F2E]/5";
+                              const unavailableClasses = cell.isUnavailable && !cell.isDisabled
                                 ? "bg-[#F04E36]/10 text-[#F04E36] ring-[#F04E36]/20"
                                 : "";
-                            const selectedClasses = isSelected
-                              ? "bg-gradient-to-r from-[#F04E36] to-[#EAB308] text-white ring-white/20"
-                              : "";
-                            const todayRing =
-                              cell.isToday && !isSelected
-                                ? "outline outline-1 outline-[#EAB308]/60"
+                              const selectedClasses = isSelected
+                                ? "bg-gradient-to-r from-[#F04E36] to-[#EAB308] text-white ring-white/20"
                                 : "";
-                            return (
-                              <motion.button
-                                key={cell.key}
-                                type="button"
-                                whileHover={
-                                  cell.isDisabled ? undefined : { scale: 1.02 }
-                                }
-                                whileTap={
-                                  cell.isDisabled ? undefined : { scale: 0.98 }
-                                }
-                                onClick={() => {
-                                  if (cell.isDisabled) return;
-                                  setSelectedDate(startOfDay(cell.date));
-                                }}
-                                className={`${baseClasses} ${disabledClasses} ${unavailableClasses} ${selectedClasses} ${todayRing}`}
-                                aria-disabled={cell.isDisabled}
-                                aria-label={`Select ${cell.date.toDateString()}`}
-                              >
-                                {cell.label}
-                                {cell.isUnavailable && (
-                                  <span className="absolute -top-1 -right-1 inline-block h-2 w-2 rounded-full bg-[#F04E36]" />
-                                )}
-                              </motion.button>
-                            );
-                          })}
-                        </motion.div>
+                              const todayRing = cell.isToday && !isSelected ? "outline outline-1 outline-[#EAB308]/60" : "";
+                              return (
+                                <motion.button
+                                  key={cell.key}
+                                  type="button"
+                                  whileHover={cell.isDisabled ? undefined : { scale: 1.02 }}
+                                  whileTap={cell.isDisabled ? undefined : { scale: 0.98 }}
+                                  onClick={() => {
+                                    if (cell.isDisabled) return;
+                                    setSelectedDate(startOfDay(cell.date));
+                                  }}
+                                  className={`${baseClasses} ${disabledClasses} ${unavailableClasses} ${selectedClasses} ${todayRing}`}
+                                  aria-disabled={cell.isDisabled}
+                                  aria-label={`Select ${cell.date.toDateString()}`}
+                                >
+                                  {cell.label}
+                                  {cell.isUnavailable && (
+                                    <span className="absolute -top-1 -right-1 inline-block h-2 w-2 rounded-full bg-[#F04E36]" />
+                                  )}
+                                </motion.button>
+                              );
+                            })}
+                          </motion.div>
+                        )}
                       </AnimatePresence>
                       <div className="mt-3 flex items-center gap-3 text-xs">
                         <div className="inline-flex items-center gap-1 text-[#0c2b40]/60">
@@ -293,6 +323,9 @@ const ScheduleRequestModal = ({
                       <div className="mt-2 text-xs text-[#0c2b40]/70">
                         Only dates from today to one month ahead are selectable.
                       </div>
+                      {capacityError && (
+                        <div className="mt-2 text-xs text-[#F04E36]">{capacityError}</div>
+                      )}
                     </div>
                   </div>
                   <div className="rounded-xl bg-[#081F2E]/5 p-3 ring-1 ring-[#081F2E]/10">
@@ -336,18 +369,75 @@ const ScheduleRequestModal = ({
                     Cancel
                   </button>
                   <button
-                    onClick={() => onConfirm?.({ date: selectedDate })}
-                    disabled={!selectedDate}
+                    onClick={async () => {
+                      if (submitting) return;
+                      setSubmitError("");
+                      if (!selectedDate) {
+                        setSubmitError("Please select a date.");
+                        return;
+                      }
+                      const cid = centre?.vc_id ?? centre?.id;
+                      const vid = vaccine?.id ?? vaccine?.vaccine_id;
+                      const vname = vaccine?.name ?? vaccine?.vaccine_name ?? "";
+                      if (!cid || !vid || !vname) {
+                        setSubmitError("Missing centre or vaccine information.");
+                        return;
+                      }
+                      try {
+                        setSubmitting(true);
+                        const user = await getCurrentUser();
+                        const citizenId = user?.citizen_id ?? user?.id ?? "";
+                        if (!citizenId) {
+                          throw new Error("Missing citizen identity.");
+                        }
+                        const payload = {
+                          citizen_id: String(citizenId),
+                          vaccine_id: String(vid),
+                          vaccine_name: String(vname),
+                          center_id: String(cid),
+                          date: startOfDay(selectedDate).toISOString(),
+                          time: "14:00",
+                        };
+                        const res = await createAppointment(payload);
+                        onConfirm?.({ date: selectedDate, appointment: res, payload });
+                      } catch (err) {
+                        setSubmitError(err?.message || "Failed to create appointment.");
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                    disabled={submitting}
                     className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${
-                      selectedDate
-                        ? "bg-[#F04E36] text-white hover:bg-[#d7432f]"
-                        : "bg-[#081F2E]/10 text-[#0c2b40]/50 cursor-not-allowed"
+                      submitting
+                        ? "bg-[#081F2E]/10 text-[#0c2b40]/50 cursor-not-allowed"
+                        : "bg-[#F04E36] text-white hover:bg-[#d7432f]"
                     }`}
                   >
-                    <FiSend />
-                    Confirm Request
+                    {submitting ? (
+                      <>
+                        <div className="h-4 w-4 rounded-full border-2 border-white/70 border-t-transparent animate-spin" />
+                        Submitting…
+                      </>
+                    ) : (
+                      <>
+                        <FiSend />
+                        Confirm Request
+                      </>
+                    )}
                   </button>
                 </div>
+                <AnimatePresence>
+                  {submitError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      className="pt-1 text-xs text-[#F04E36] text-right"
+                    >
+                      {submitError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           </div>

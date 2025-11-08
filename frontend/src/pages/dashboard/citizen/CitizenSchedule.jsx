@@ -561,7 +561,7 @@ const CitizenSchedule = () => {
           setToast({
             show: true,
             type: "success",
-            message: "Successfully sent schedule request.",
+            message: "Appointment scheduled successfully.",
           });
           setTimeout(() => setToast((t) => ({ ...t, show: false })), 3500);
         }}

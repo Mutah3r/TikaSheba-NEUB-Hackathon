@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FiAlertCircle,
   FiCalendar,
@@ -45,43 +45,35 @@ const STATUS_META = {
   },
 };
 
-const APPOINTMENTS_MOCK = [
-  {
-    id: "a1",
-    vaccine: "COVID-19 (Pfizer)",
-    status: "requested",
-    time: "2025-11-12T09:00:00.000Z",
-    centre: "Agra Vaccination Centre",
-  },
-  {
-    id: "a2",
-    vaccine: "BCG",
-    status: "scheduled",
-    time: "2025-11-15T10:30:00.000Z",
-    centre: "Agra District Clinic",
-  },
-  {
-    id: "a3",
-    vaccine: "MMR (Measles, Mumps, Rubella)",
-    status: "done",
-    time: "2025-10-02T14:00:00.000Z",
-    centre: "Kanpur Health Centre",
-  },
-  {
-    id: "a4",
-    vaccine: "Seasonal Influenza",
-    status: "cancelled",
-    time: "2025-09-29T16:15:00.000Z",
-    centre: "Dummy Health Centre",
-  },
-  {
-    id: "a5",
-    vaccine: "HPV",
-    status: "missed",
-    time: "2025-09-20T11:00:00.000Z",
-    centre: "Dummy Health Centre 2",
-  },
-];
+import { getAppointmentsByCitizen } from "../../../services/appointmentService";
+import { getCurrentUser } from "../../../services/userService";
+
+const toDisplayIso = (dateIso, timeRaw) => {
+  try {
+    if (!dateIso && !timeRaw) return null;
+    const isHHMM = typeof timeRaw === "string" && /^\d{2}:\d{2}$/.test(timeRaw);
+    if (isHHMM && dateIso) {
+      const [hh, mm] = timeRaw.split(":").map((s) => parseInt(s, 10));
+      const base = new Date(dateIso);
+      if (!Number.isNaN(hh)) base.setHours(hh);
+      if (!Number.isNaN(mm)) base.setMinutes(mm);
+      base.setSeconds(0);
+      base.setMilliseconds(0);
+      return base.toISOString();
+    }
+    if (typeof timeRaw === "string" && timeRaw.includes("T")) {
+      const d = new Date(timeRaw);
+      if (!Number.isNaN(d.getTime())) return d.toISOString();
+    }
+    if (dateIso) {
+      const d = new Date(dateIso);
+      if (!Number.isNaN(d.getTime())) return d.toISOString();
+    }
+    return null;
+  } catch {
+    return dateIso || null;
+  }
+};
 
 const formatDateTime = (iso) => {
   if (!iso) return "-";
@@ -97,12 +89,54 @@ const formatDateTime = (iso) => {
 
 const CitizenAppointments = () => {
   const [activeStatus, setActiveStatus] = useState("all");
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const data = APPOINTMENTS_MOCK;
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        setError("");
+        const user = await getCurrentUser();
+        const citizenId = user?.citizen_id || user?.id;
+        if (!citizenId) throw new Error("Missing citizen identity");
+        const res = await getAppointmentsByCitizen(citizenId);
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+        const normalized = list.map((item, idx) => ({
+          id: item._id || `appt-${idx}`,
+          vaccine: item.vaccine_name || "Unknown",
+          status: item.status || "requested",
+          time: toDisplayIso(item.date, item.time),
+          centre: item.center_id || "-",
+        }));
+        if (!mounted) return;
+        setAppointments(normalized);
+      } catch (err) {
+        if (!mounted) return;
+        setError(err?.message || "Failed to load appointments");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
+    const data = appointments;
     if (activeStatus === "all") return data;
     return data.filter((a) => a.status === activeStatus);
-  }, [data, activeStatus]);
+  }, [appointments, activeStatus]);
 
   return (
     <motion.section
@@ -164,6 +198,31 @@ const CitizenAppointments = () => {
           </div>
         </div>
 
+        {/* Loader & Error */}
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            className="rounded-xl bg-white ring-1 ring-[#081F2E]/10 p-4 mb-3"
+          >
+            <div className="flex items-center gap-2 text-sm text-[#0c2b40]/70">
+              <div className="h-5 w-5 rounded-full border-2 border-[#081F2E] border-t-transparent animate-spin" />
+              Loading appointments…
+            </div>
+          </motion.div>
+        )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            className="rounded-xl bg-white ring-1 ring-[#F04E36]/20 p-4 mb-3"
+          >
+            <div className="text-sm text-[#F04E36]">{error}</div>
+          </motion.div>
+        )}
+
         {/* Table */}
         <div className="rounded-xl bg-white ring-1 ring-[#081F2E]/10 overflow-hidden">
           <table className="min-w-full">
@@ -183,7 +242,7 @@ const CitizenAppointments = () => {
                 transition={{ type: "spring", stiffness: 240, damping: 22 }}
               >
                 {filtered.map((a) => {
-                  const Meta = STATUS_META[a.status];
+                  const Meta = STATUS_META[a.status] || STATUS_META.requested;
                   const Icon = Meta.icon;
                   return (
                     <motion.tr

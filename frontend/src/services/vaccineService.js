@@ -8,4 +8,8 @@ export function listVaccines() {
   return api.get(`/centre_vaccine/assigned`);
 }
 
-export default { getCentreOverview, listVaccines };
+export function getCitizenLogs(citizen_id) {
+  return api.get(`/vaccine/log/citizen/${citizen_id}`);
+}
+
+export default { getCentreOverview, listVaccines, getCitizenLogs };
