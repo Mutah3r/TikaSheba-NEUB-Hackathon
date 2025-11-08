@@ -559,12 +559,14 @@ async def get_vaccine_forecast(req: ForecastRequest):
 import httpx # Needed for making external asynchronous HTTP requests
 
 # --- New Data Models for Input ---
-
 class DemandForecastRequest(BaseModel):
     centre_vaccine_id: str = Field(..., example="690e473c078a4481e3c69863")
     days_to_forecast: int = Field(..., ge=1, le=365, example=30)
+    # --- Change 1: Added auth_token field ---
+    auth_token: str = Field(..., example="Bearer abc123xyz789", description="Authorization token for the external historical API.")
+    # ----------------------------------------
 
-# --- New API Endpoint ---
+# --- New API Endpoint (UPDATED) ---
 
 @app.post("/forecast_demand", response_model=ForecastResponse)
 async def forecast_demand_endpoint(req: DemandForecastRequest):
@@ -572,28 +574,36 @@ async def forecast_demand_endpoint(req: DemandForecastRequest):
     Fetches historical usage data for a specific vaccine at a center from an external API,
     transforms it, and then uses the internal /forecast endpoint (Prophet model) to predict future demand.
     """
+    
+    # auth_token = "Bearer YOUR_AUTH_TOKEN_HERE" # Original Hardcoded Token Removed
+
     # URL for the external historical data API
     external_api_url = f"http://localhost:8000/api/staff/centre_vaccine/{req.centre_vaccine_id}/daily"
+
+    # --- Change 2: Use the token from the request body ---
+    headers = {
+        "Authorization": req.auth_token, # Use the token passed in the request body
+        "Accept": "application/json"
+    }
+    # ----------------------------------------------------
     
     try:
         # 1. Fetch historical data from external API
         async with httpx.AsyncClient() as client:
-            response = await client.get(external_api_url, timeout=30.0)
+            # Pass the headers dictionary to the get() method
+            response = await client.get(external_api_url, headers=headers, timeout=30.0)
+            
             response.raise_for_status() # Raises an exception for 4xx/5xx status codes
             external_data = response.json()
             
     except httpx.HTTPError as e:
         # Catch errors from the external service call
         print(f"External API Error: {e}")
+        status_code = e.response.status_code if e.response else 502
+        detail_message = f"Failed to fetch data from the external historical API. Status: {status_code}. Check token/permissions if {status_code} is 401/403."
         raise HTTPException(
-            status_code=502,
-            detail=f"Failed to fetch data from the external historical API. Check external service status. Error: {e.response.status_code if e.response else 'Unknown'}"
-        )
-    except Exception as e:
-        # Catch general errors during the fetch process
-        raise HTTPException(
-            status_code=500,
-            detail=f"An unexpected error occurred during external data fetch: {str(e)}"
+            status_code=status_code,
+            detail=detail_message
         )
 
     # 2. Extract and transform the data
@@ -613,7 +623,7 @@ async def forecast_demand_endpoint(req: DemandForecastRequest):
             DataPoint(
                 date=record.get("date"),
                 # Ensure the value is converted to float as required by the DataPoint model
-                amphules_used=float(record.get("total_dose_used", 0)) 
+                amphules_used=float(record.get("total_dose_used", 0))
             )
         )
 
@@ -640,6 +650,88 @@ async def forecast_demand_endpoint(req: DemandForecastRequest):
 
 
 
+
+
+
+
+
+@app.post("/forecast_waste", response_model=ForecastResponse)
+async def forecast_demand_endpoint(req: DemandForecastRequest):
+    """
+    Fetches historical usage data for a specific vaccine at a center from an external API,
+    transforms it, and then uses the internal /forecast endpoint (Prophet model) to predict future demand.
+    """
+    
+    # auth_token = "Bearer YOUR_AUTH_TOKEN_HERE" # Original Hardcoded Token Removed
+
+    # URL for the external historical data API
+    external_api_url = f"http://localhost:8000/api/staff/centre_vaccine/{req.centre_vaccine_id}/daily"
+
+    # --- Change 2: Use the token from the request body ---
+    headers = {
+        "Authorization": req.auth_token, # Use the token passed in the request body
+        "Accept": "application/json"
+    }
+    # ----------------------------------------------------
+    
+    try:
+        # 1. Fetch historical data from external API
+        async with httpx.AsyncClient() as client:
+            # Pass the headers dictionary to the get() method
+            response = await client.get(external_api_url, headers=headers, timeout=30.0)
+            
+            response.raise_for_status() # Raises an exception for 4xx/5xx status codes
+            external_data = response.json()
+            
+    except httpx.HTTPError as e:
+        # Catch errors from the external service call
+        print(f"External API Error: {e}")
+        status_code = e.response.status_code if e.response else 502
+        detail_message = f"Failed to fetch data from the external historical API. Status: {status_code}. Check token/permissions if {status_code} is 401/403."
+        raise HTTPException(
+            status_code=status_code,
+            detail=detail_message
+        )
+
+    # 2. Extract and transform the data
+    history_data_points = []
+    
+    daily_records = external_data.get("daily", [])
+    
+    if not daily_records:
+        raise HTTPException(
+            status_code=404, 
+            detail="External API returned no historical usage data for this center/vaccine ID."
+        )
+
+    for record in daily_records:
+        # Transformation: Map 'total_dose_used' to 'amphules_used'
+        history_data_points.append(
+            DataPoint(
+                date=record.get("date"),
+                # Ensure the value is converted to float as required by the DataPoint model
+                amphules_used=float(record.get("total_dose_wasted", 0))
+            )
+        )
+
+    # 3. Construct the request for the internal /forecast API
+    internal_req = ForecastRequest(
+        history=history_data_points,
+        days_to_forecast=req.days_to_forecast
+    )
+
+    # 4. Call the existing internal forecasting function (get_vaccine_forecast) directly
+    try:
+        # Awaiting the call to the function defined for the /forecast endpoint
+        forecast_result = await get_vaccine_forecast(internal_req)
+        return forecast_result
+
+    except HTTPException as e:
+        # Propagate exceptions raised by the internal model (e.g., if history is too short)
+        raise e
+    except Exception as e:
+        print(f"Internal Forecasting Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal forecasting failed after data transformation: {str(e)}")
 
 
 
