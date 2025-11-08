@@ -10,6 +10,11 @@ export async function askGuidance(prompt) {
   return res.data;
 }
 
+export async function askCenterChat(message) {
+  const res = await ai.post("/center_chat", { message });
+  return res.data;
+}
+
 export async function getWasteForecast({
   centre_vaccine_id,
   days_to_forecast,
@@ -36,4 +41,4 @@ export async function getDemandForecast({
   return res.data;
 }
 
-export default { askGuidance, getWasteForecast, getDemandForecast };
+export default { askGuidance, askCenterChat, getWasteForecast, getDemandForecast };

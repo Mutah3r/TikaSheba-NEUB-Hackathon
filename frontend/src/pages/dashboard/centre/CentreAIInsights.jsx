@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import { askCenterChat } from "../../../services/aiService";
 import { FiMessageSquare, FiSend, FiZap } from "react-icons/fi";
 
 const SUGGESTIONS = [
@@ -15,63 +16,25 @@ const CentreAIInsights = () => {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const mockAIResponse = (prompt) => {
-    const p = prompt.toLowerCase();
-    if (p.includes("হেপাটাইটিস") || p.includes("hepatitis b")) {
-      return (
-        "Hepatitis B vaccines should be stored between 2–8°C in a dedicated vaccine refrigerator. " +
-        "Avoid freezing, protect from light, and monitor temperature continuously with a data logger or thermometer. " +
-        "Use a proper cold chain and do not keep vaccines on the door or near the cooling plate."
-      );
-    }
-    if (
-      p.includes("পোলিও") ||
-      p.includes("polio") ||
-      p.includes("temperature")
-    ) {
-      return (
-        "Follow your national EPI guidelines: at service points, vaccines are typically kept at 2–8°C. " +
-        "Maintain the cold chain, avoid direct contact with ice packs, and never freeze vaccines unless specified by manufacturer instructions."
-      );
-    }
-    if (p.includes("tetanus") || p.includes("refrigerator")) {
-      return (
-        "Do not keep tetanus vaccines outside the recommended 2–8°C range. " +
-        "Short exposures to room temperature may reduce potency; always store and transport within the cold chain and avoid light/heat."
-      );
-    }
-    if (
-      p.includes("হামের") ||
-      p.includes("measles") ||
-      p.includes("reconstituted")
-    ) {
-      return (
-        "Reconstituted measles (or MR/MMR) vaccine should be used as soon as possible and discarded after 6 hours or at the end of the session, whichever comes first. " +
-        "Keep it protected from light and maintain aseptic technique during reconstitution and administration."
-      );
-    }
-    if (
-      p.includes("transport") ||
-      p.includes("পরিবহন") ||
-      p.includes("precaution")
-    ) {
-      return (
-        "Use conditioned ice packs and WHO-approved cold boxes/carriers. Maintain 2–8°C, avoid direct sunlight, and verify temperatures with indicators or data loggers. " +
-        "Minimize door openings, pack vials securely, and never transport vaccines loosely."
-      );
-    }
-    return "Provide specific vaccine and scenario details for tailored guidance. In general, keep vaccines at 2–8°C, protect from light, avoid freezing (unless specified), and maintain the cold chain during storage and transportation.";
-  };
-
-  const onSend = () => {
+  const onSend = async () => {
     const prompt = input.trim();
     if (!prompt) return;
     setLoading(true);
-    setTimeout(() => {
-      const res = mockAIResponse(prompt);
-      setResponse(res);
+    setResponse("");
+    try {
+      const res = await askCenterChat(prompt);
+      const text =
+        typeof res === "string"
+          ? res
+          : res?.message || res?.response || JSON.stringify(res);
+      setResponse(text);
+    } catch (err) {
+      setResponse(
+        err?.response?.data?.message || err?.message || "Failed to fetch AI response."
+      );
+    } finally {
       setLoading(false);
-    }, 650);
+    }
   };
 
   return (
