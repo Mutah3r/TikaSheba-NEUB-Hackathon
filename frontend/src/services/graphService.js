@@ -10,4 +10,9 @@ export function getCentreLogs(params = {}) {
   return api.get(`/graph/centre/logs`, { params });
 }
 
-export default { getWeeklyServed, getCentreLogs };
+// Citizen: generate vaccine card QR and payload (requires Authorization token)
+export function generateCitizenVaccineCard() {
+  return api.post(`/graph/citizen/vaccine-card/generate`);
+}
+
+export default { getWeeklyServed, getCentreLogs, generateCitizenVaccineCard };
