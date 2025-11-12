@@ -208,5 +208,16 @@ The TikaSheba roadmap focuses on real-time capabilities, deeper integrations, an
 
 # Swagger:
 
-
 <img src="swagger_api_documentations.png">
+
+
+
+# We became Champion of NUEB ICT Fest 2025!
+
+
+<img src="Champion.jpeg" alt="Champion" width="50%">
+
+
+<img src="During_hackathon.jpeg" alt="During Hackathon" width="50%">
+
+
