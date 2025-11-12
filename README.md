@@ -212,7 +212,7 @@ The TikaSheba roadmap focuses on real-time capabilities, deeper integrations, an
 
 
 
-# We became Champion of NUEB ICT Fest 2025!
+# We became Champion of NEUB ICT Fest 2025!
 
 
 <img src="Champion.jpeg" alt="Champion" width="50%">
