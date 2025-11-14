@@ -173,13 +173,14 @@ The TikaSheba roadmap focuses on real-time capabilities, deeper integrations, an
 
 ## 📸 Screenshots
 
-### Web Demo
+### Web Screenshots
 
 <table>
   <tr>
     <td>
       <figure>
         <img src="screenshots/web/vlcsnap-2025-11-14-23h34m22s560.png" alt="Web Demo 1" width="300">
+        <br>
         <figcaption>Landing Page</figcaption>
       </figure>
     </td>
