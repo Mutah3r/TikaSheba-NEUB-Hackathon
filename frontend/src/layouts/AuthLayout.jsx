@@ -9,12 +9,17 @@ const AuthLayout = () => {
 
   // If user is already authenticated, redirect away from /auth and its children
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     if (!token) return;
     const role = localStorage.getItem("role") || "citizen";
     if (role === "authority") {
       navigate("/dashboard/authority", { replace: true });
-    } else if (role === "vacc_centre" || role === "vcc_centre" || role === "centre") {
+    } else if (
+      role === "vacc_centre" ||
+      role === "vcc_centre" ||
+      role === "centre"
+    ) {
       navigate("/dashboard/centre", { replace: true });
     } else {
       navigate("/dashboard/citizen", { replace: true });
@@ -60,7 +65,7 @@ const AuthLayout = () => {
             />
             <p className="text-[#0c2b40]/80 leading-relaxed text-center">
               Seamless access for Citizens, Centres, and Authorities. Experience
-              a modern, light and aesthetic interface powered by our secure mock
+              a modern, light and aesthetic interface powered by our secure
               flows.
             </p>
           </div>
